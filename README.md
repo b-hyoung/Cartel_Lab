@@ -90,6 +90,8 @@ pip freeze > requirements.txt
 
 
 ## 5. Django 점검 및 DB 반영
+모델을 추가하거나 수정했으면 아래 `makemigrations`, `migrate`를 다시 실행해야 합니다.
+
 macOS / Linux:
 ```bash
 python manage.py check
@@ -103,6 +105,9 @@ python manage.py check
 python manage.py makemigrations
 python manage.py migrate
 ```
+
+예시:
+- 회원가입/로그인처럼 사용자 모델이 바뀐 경우에도 반드시 `python manage.py makemigrations` 후 `python manage.py migrate`를 실행합니다.
 
 ## 6. 서버 실행
 macOS / Linux:
