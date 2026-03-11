@@ -3,27 +3,654 @@
 {% block title %}최근일자리 | 비전대학교 Lab{% endblock %}
 
 {% block content %}
+<style>
+    .jobs-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+        margin-top: 16px;
+    }
+    .job-card {
+        padding: 18px 18px 20px;
+        cursor: pointer;
+        border-radius: 24px;
+        min-height: 270px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    .job-card:hover {
+        transform: translateY(-2px);
+    }
+    .job-card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .job-card-topline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .job-card-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: #2563eb;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
+    .job-card-badge span + span::before {
+        content: "|";
+        margin-right: 10px;
+        color: rgba(37, 99, 235, 0.28);
+        font-weight: 700;
+    }
+    .job-card-deadline {
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: #2f3136;
+    }
+    .job-card-company {
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        gap: 16px;
+        align-items: center;
+    }
+    .job-card-logo {
+        width: 84px;
+        height: 84px;
+        border-radius: 20px;
+        border: 1px solid #eceef2;
+        background: linear-gradient(180deg, #fff8f1 0%, #ffffff 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--brand);
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.06em;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .job-card-company-name {
+        margin: 0;
+        font-size: 16px;
+        color: #717784;
+        font-weight: 700;
+    }
+    .job-card-title {
+        display: block;
+        margin-top: 6px;
+        font-size: 19px;
+        line-height: 1.35;
+        letter-spacing: -0.03em;
+    }
+    .job-card-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: auto;
+    }
+    .job-detail-button {
+        border: none;
+        cursor: pointer;
+        font: inherit;
+    }
+    .job-card-meta {
+        display: grid;
+        gap: 8px;
+    }
+    .job-card-role {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.55;
+        color: #2c313a;
+        font-weight: 700;
+    }
+    .job-card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+        color: #666d7a;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+    .job-card-tags span {
+        white-space: nowrap;
+    }
+    .job-card-submeta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .job-card-subpill {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #f6f7f9;
+        color: #616874;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .job-card-preview {
+        display: grid;
+        gap: 10px;
+    }
+    .job-card-preview h4 {
+        margin: 0;
+        font-size: 15px;
+        color: #2b313a;
+        letter-spacing: -0.02em;
+    }
+    .job-card-preview ul {
+        margin: 0;
+        padding-left: 18px;
+        color: #4f5662;
+        font-size: 14px;
+        line-height: 1.65;
+        display: grid;
+        gap: 6px;
+    }
+    .job-card-preview p {
+        margin: 0;
+        color: #4f5662;
+        font-size: 14px;
+        line-height: 1.65;
+    }
+    .job-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 80;
+    }
+    .job-modal.is-open {
+        display: flex;
+    }
+    .job-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(33, 33, 36, 0.42);
+        backdrop-filter: blur(5px);
+    }
+    .job-modal-panel {
+        position: relative;
+        width: min(920px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: hidden;
+        border: 1px solid #ebecef;
+        border-radius: 28px;
+        background: #fff;
+        box-shadow: 0 20px 70px rgba(17, 24, 39, 0.16);
+    }
+    .job-modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--line);
+    }
+    .job-modal-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .job-modal-close {
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: transparent;
+        font-size: 36px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .job-modal-body {
+        padding: 28px 30px 30px;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
+    .job-modal-hero {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 18px;
+        align-items: start;
+    }
+    .job-modal-logo {
+        width: 92px;
+        height: 92px;
+        border-radius: 22px;
+        border: 1px solid #eceef2;
+        object-fit: cover;
+        background: #fff8f1;
+    }
+    .job-modal-logo.fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--brand);
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+    .job-modal-company {
+        margin: 6px 0 0;
+        font-size: 15px;
+        color: var(--muted);
+    }
+    .job-modal-title {
+        margin: 4px 0 0;
+        font-size: clamp(28px, 3vw, 42px);
+        letter-spacing: -0.04em;
+        line-height: 1.08;
+    }
+    .job-modal-sub {
+        margin: 10px 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .job-modal-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #f5f6f8;
+        color: #5d6470;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .job-modal-grid {
+        display: grid;
+        gap: 22px;
+        margin-top: 28px;
+    }
+    .job-modal-section h3 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        letter-spacing: -0.03em;
+    }
+    .job-modal-section h4 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        letter-spacing: -0.02em;
+    }
+    .job-modal-copy {
+        margin: 0;
+        color: #3b4048;
+        font-size: 15px;
+        line-height: 1.7;
+        white-space: pre-line;
+    }
+    .job-modal-list {
+        margin: 0;
+        padding-left: 20px;
+        color: #3b4048;
+        display: grid;
+        gap: 9px;
+        line-height: 1.6;
+    }
+    .job-modal-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .job-modal-links a {
+        color: var(--brand);
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .job-modal-images {
+        display: grid;
+        gap: 12px;
+    }
+    .job-modal-images img {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid #eceef2;
+        background: #fff;
+    }
+    .job-modal-footer {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+    }
+    .job-modal-empty,
+    .job-modal-loading {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .job-modal-loading {
+        padding: 10px 0 6px;
+    }
+    body.modal-open {
+        overflow: hidden;
+    }
+    @media (max-width: 760px) {
+        .jobs-list {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .job-card {
+            padding: 16px;
+            min-height: auto;
+        }
+        .job-card-top {
+            align-items: flex-start;
+        }
+        .job-card-company {
+            grid-template-columns: 72px 1fr;
+            gap: 14px;
+        }
+        .job-card-logo {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            font-size: 24px;
+        }
+        .job-modal {
+            padding: 0;
+            align-items: end;
+        }
+        .job-modal-panel {
+            width: 100%;
+            max-height: 92vh;
+            border-radius: 26px 26px 0 0;
+        }
+        .job-modal-head {
+            padding: 16px 18px;
+        }
+        .job-modal-head-actions .nav-link {
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+        .job-modal-body {
+            padding: 20px 18px 22px;
+        }
+        .job-modal-hero {
+            grid-template-columns: 72px 1fr;
+            gap: 14px;
+        }
+        .job-modal-logo {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+        }
+        .job-modal-title {
+            font-size: 30px;
+        }
+        .job-modal-section h3 {
+            font-size: 24px;
+        }
+    }
+</style>
+
 <h1 style="margin-top:0; margin-bottom:10px;">최근일자리</h1>
 <p style="margin-top:0; color:var(--muted);">
-    사람인/당근 등 외부 채용 소스에서 최근 일자리 목록을 수집해 보여주는 페이지입니다.
+    사람인과 원티드에서 수집한 신입 중심 채용 공고를 보여줍니다.
 </p>
 
+{% if jobs %}
+<div class="jobs-list">
+    {% for job in jobs %}
+    <article class="landing-card job-card" data-job-id="{{ job.id }}" tabindex="0" role="button" aria-haspopup="dialog">
+        <div class="job-card-top">
+            <div class="job-card-topline">
+                <div class="job-card-badge">
+                    <span>신입 가능</span>
+                </div>
+                {% if job.ui_deadline_label %}
+                <span class="job-card-deadline">{{ job.ui_deadline_label }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="job-card-company">
+            <div class="job-card-logo">{{ job.ui_company_mark }}</div>
+            <div>
+                <p class="job-card-company-name">{{ job.company_name }}</p>
+                <strong class="job-card-title">{{ job.title }}</strong>
+            </div>
+        </div>
+
+        <div class="job-card-meta">
+            <p class="job-card-role">직무: {{ job.job_role|default:job.title }}</p>
+            <div class="job-card-submeta">
+                {% if job.experience_label %}<span class="job-card-subpill">{{ job.experience_label }}</span>{% endif %}
+                {% if job.location %}<span class="job-card-subpill">{{ job.location }}</span>{% endif %}
+                {% if job.education_level %}<span class="job-card-subpill">{{ job.education_level }}</span>{% endif %}
+            </div>
+            {% if job.ui_tags %}
+            <div class="job-card-tags">
+                {% for tag in job.ui_tags %}
+                <span>{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if job.ui_main_tasks %}
+            <div class="job-card-preview">
+                <h4>주요 업무</h4>
+                <ul>
+                    {% for task in job.ui_main_tasks %}
+                    <li>{{ task }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% elif job.summary_text %}
+            <div class="job-card-preview">
+                <h4>요약</h4>
+                <p>{{ job.summary_text }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="job-card-actions">
+            <button type="button" class="nav-link primary job-detail-button" data-job-id="{{ job.id }}">상세 보기</button>
+            <a href="{{ job.external_url }}" target="_blank" rel="noopener noreferrer" class="nav-link">원문 공고로 이동</a>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
 <div style="margin-top:14px; padding:14px; border:1px dashed #ffcfaf; border-radius:12px; background:#fff8f3;">
-    현재는 준비 단계입니다. 이후 기능에서 주 1회 패치된 최근 일자리 100건과 AI 이력서 매칭 결과를 표시합니다.
+    아직 수집된 공고가 없습니다. <code>python manage.py sync_job_sources</code>를 먼저 실행하세요.
+</div>
+{% endif %}
+
+<div class="job-modal" id="job-modal" aria-hidden="true">
+    <div class="job-modal-backdrop" data-close-modal></div>
+    <div class="job-modal-panel" role="dialog" aria-modal="true" aria-labelledby="job-modal-title">
+        <div class="job-modal-head">
+            <strong>공고 상세</strong>
+            <div class="job-modal-head-actions">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="nav-link primary" id="job-modal-external-link">원문 공고로 이동</a>
+                <button type="button" class="job-modal-close" data-close-modal aria-label="닫기">×</button>
+            </div>
+        </div>
+        <div class="job-modal-body" id="job-modal-body">
+            <p class="job-modal-empty">공고를 선택하면 상세 정보가 표시됩니다.</p>
+        </div>
+    </div>
 </div>
 
-<div class="landing-grid" style="margin-top:16px;">
-    <article class="landing-card">
-        <strong>사람인 수집</strong>
-        <p>키워드/지역 기반 최근 채용 공고 수집</p>
-    </article>
-    <article class="landing-card">
-        <strong>당근 수집</strong>
-        <p>로컬 일자리 공고 수집 및 중복 제거</p>
-    </article>
-    <article class="landing-card">
-        <strong>AI 매칭</strong>
-        <p>이력서 기반 우선 추천 점수 계산</p>
-    </article>
-</div>
+<script>
+    (function () {
+        var modal = document.getElementById("job-modal");
+        var modalBody = document.getElementById("job-modal-body");
+        var modalExternalLink = document.getElementById("job-modal-external-link");
+        if (!modal || !modalBody) return;
+
+        var cards = document.querySelectorAll(".job-card");
+        var detailButtons = document.querySelectorAll(".job-detail-button");
+        var closeButtons = modal.querySelectorAll("[data-close-modal]");
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function renderList(title, items) {
+            if (!items || !items.length) return "";
+            return [
+                '<section class="job-modal-section">',
+                "<h4>" + escapeHtml(title) + "</h4>",
+                '<ul class="job-modal-list">',
+                items.map(function (item) {
+                    return "<li>" + escapeHtml(item) + "</li>";
+                }).join(""),
+                "</ul>",
+                "</section>",
+            ].join("");
+        }
+
+        function renderDetail(detail) {
+            if (modalExternalLink) {
+                modalExternalLink.setAttribute("href", detail.external_url || "#");
+            }
+            var pills = [detail.location, detail.experience_label, detail.education_level, detail.job_role]
+                .filter(Boolean)
+                .map(function (item) {
+                    return '<span class="job-modal-pill">' + escapeHtml(item) + "</span>";
+                })
+                .join("");
+
+            var logo = detail.logo_url
+                ? '<img src="' + escapeHtml(detail.logo_url) + '" alt="' + escapeHtml(detail.company_name) + ' 로고" class="job-modal-logo">'
+                : '<div class="job-modal-logo fallback">' + escapeHtml((detail.company_name || "?").slice(0, 1)) + "</div>";
+
+            var links = detail.detail_links && detail.detail_links.length
+                ? [
+                    '<section class="job-modal-section">',
+                    "<h4>세부 지원 링크</h4>",
+                    '<div class="job-modal-links">',
+                    detail.detail_links.map(function (item) {
+                        return '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.label) + "</a>";
+                    }).join(""),
+                    "</div>",
+                    "</section>",
+                ].join("")
+                : "";
+
+            var images = detail.detail_images && detail.detail_images.length
+                ? [
+                    '<section class="job-modal-section">',
+                    "<h4>상세요강 이미지</h4>",
+                    '<div class="job-modal-images">',
+                    detail.detail_images.map(function (src) {
+                        return '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(detail.title) + ' 상세 이미지">';
+                    }).join(""),
+                    "</div>",
+                    "</section>",
+                ].join("")
+                : "";
+
+            var requiredSkills = detail.required_skills && detail.required_skills.length
+                ? renderList("기술 스택", detail.required_skills)
+                : "";
+
+            modalBody.innerHTML = [
+                '<div class="job-modal-hero">',
+                logo,
+                "<div>",
+                '<p class="job-modal-company">' + escapeHtml(detail.company_name) + "</p>",
+                '<h2 class="job-modal-title" id="job-modal-title">' + escapeHtml(detail.title) + "</h2>",
+                '<div class="job-modal-sub">' + pills + "</div>",
+                "</div>",
+                "</div>",
+                '<div class="job-modal-grid">',
+                detail.overview ? '<section class="job-modal-section"><h3>공고 요약</h3><p class="job-modal-copy">' + escapeHtml(detail.overview) + "</p></section>" : "",
+                renderList("주요 업무", detail.main_tasks || []),
+                renderList("자격 요건", detail.requirements || []),
+                renderList("우대 사항", detail.preferred_points || []),
+                renderList("복리후생", detail.benefits || []),
+                requiredSkills,
+                links,
+                images,
+                "</div>",
+                '<div class="job-modal-footer">',
+                '<a href="' + escapeHtml(detail.external_url) + '" target="_blank" rel="noopener noreferrer" class="nav-link primary">원문 공고로 이동</a>',
+                "</div>",
+            ].join("");
+        }
+
+        function openModal(jobId) {
+            modal.classList.add("is-open");
+            modal.setAttribute("aria-hidden", "false");
+            document.body.classList.add("modal-open");
+            modalBody.innerHTML = '<p class="job-modal-loading">상세 정보를 불러오는 중입니다...</p>';
+
+            fetch("/jobs/" + jobId + "/detail/")
+                .then(function (response) {
+                    if (!response.ok) throw new Error("detail fetch failed");
+                    return response.json();
+                })
+                .then(renderDetail)
+                .catch(function () {
+                    modalBody.innerHTML = '<p class="job-modal-empty">상세 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>';
+                });
+        }
+
+        function closeModal() {
+            modal.classList.remove("is-open");
+            modal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("modal-open");
+            if (modalExternalLink) {
+                modalExternalLink.setAttribute("href", "#");
+            }
+        }
+
+        cards.forEach(function (card) {
+            card.addEventListener("click", function (event) {
+                if (event.target.closest("a") || event.target.closest(".job-detail-button")) return;
+                var jobId = card.getAttribute("data-job-id");
+                if (!jobId) return;
+                event.preventDefault();
+                openModal(jobId);
+            });
+            card.addEventListener("keydown", function (event) {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                var jobId = card.getAttribute("data-job-id");
+                if (!jobId) return;
+                event.preventDefault();
+                openModal(jobId);
+            });
+        });
+
+        detailButtons.forEach(function (button) {
+            button.addEventListener("click", function (event) {
+                var jobId = button.getAttribute("data-job-id");
+                if (!jobId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                openModal(jobId);
+            });
+        });
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener("click", closeModal);
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && modal.classList.contains("is-open")) {
+                closeModal();
+            }
+        });
+    })();
+</script>
 {% endblock %}

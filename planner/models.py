@@ -31,6 +31,12 @@ class JobPosting(models.Model):
     required_skills = models.TextField(blank=True, default="")
     preferred_skills = models.TextField(blank=True, default="")
     summary_text = models.TextField(blank=True, default="")
+    detail_overview = models.TextField(blank=True, default="")
+    detail_main_tasks = models.TextField(blank=True, default="")
+    detail_requirements = models.TextField(blank=True, default="")
+    detail_preferred_points = models.TextField(blank=True, default="")
+    detail_benefits = models.TextField(blank=True, default="")
+    detail_required_skills = models.TextField(blank=True, default="")
 
     posted_at = models.DateTimeField(null=True, blank=True)
     deadline_at = models.DateTimeField(null=True, blank=True)

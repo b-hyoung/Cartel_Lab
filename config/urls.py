@@ -17,10 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
+from planner.views import job_detail_api, jobs_index
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
-    path('jobs/', TemplateView.as_view(template_name='jobs/index.html'), name='jobs-index'),
+    path('jobs/', jobs_index, name='jobs-index'),
+    path('jobs/<int:job_id>/detail/', job_detail_api, name='jobs-detail'),
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),
     path('attendance/', include('attendance.urls')),
