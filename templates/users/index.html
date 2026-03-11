@@ -3,15 +3,549 @@
 {% block title %}회원 관리{% endblock %}
 
 {% block content %}
-<h1>회원 관리</h1>
-{% if request.user.is_authenticated %}
-<p><strong>{{ request.user.name }}</strong>님으로 로그인 중입니다. 학번은 {{ request.user.student_id }}입니다.</p>
-<p><a href="/users/logout/">로그아웃</a></p>
-{% else %}
-<p>현재 로그인되어 있지 않습니다.</p>
-<p>
-    <a href="/users/signup/">회원가입</a> |
-    <a href="/users/login/">로그인</a>
-</p>
-{% endif %}
+<style>
+    .profile-shell {
+        display: grid;
+        gap: 20px;
+    }
+    .profile-hero {
+        padding: 28px;
+        border-radius: 26px;
+        border: 1px solid #ebecef;
+        background:
+            radial-gradient(circle at top right, rgba(255, 111, 15, 0.14), transparent 26%),
+            linear-gradient(180deg, #fff7f2 0%, #ffffff 100%);
+    }
+    .profile-hero h1 {
+        margin: 0;
+        font-size: clamp(32px, 4vw, 44px);
+        letter-spacing: -0.04em;
+    }
+    .profile-hero p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+        max-width: 760px;
+    }
+    .profile-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 18px;
+    }
+    .profile-panel {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: #fff;
+    }
+    .profile-panel h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+    }
+    .profile-copy {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.7;
+    }
+    .profile-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+    .profile-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #f6f7f9;
+        color: #5f6672;
+        font-size: 14px;
+        font-weight: 700;
+    }
+    .profile-form {
+        display: grid;
+        gap: 16px;
+    }
+    .field-group {
+        display: grid;
+        gap: 8px;
+    }
+    .field-group label {
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .field-group input[type="url"],
+    .field-group input[type="file"] {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #dfe3ea;
+        border-radius: 14px;
+        padding: 13px 14px;
+        font: inherit;
+        background: #fff;
+    }
+    .field-help {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .field-errors {
+        color: #c2410c;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .profile-submit {
+        justify-self: start;
+        border: none;
+        cursor: pointer;
+        font: inherit;
+    }
+    .profile-submit:disabled,
+    button.nav-link:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background: #f1f2f4;
+        color: #98a0ab;
+    }
+    .profile-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .profile-saved {
+        display: grid;
+        gap: 14px;
+    }
+    .profile-saved-item {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #fbfbfc;
+        border: 1px solid #eef0f3;
+    }
+    .profile-saved-item strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    .profile-saved-item p {
+        margin: 0;
+        color: #49515d;
+        line-height: 1.7;
+        word-break: break-word;
+    }
+    .analysis-grid {
+        display: grid;
+        gap: 16px;
+    }
+    .wide-panel {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: #fff;
+    }
+    .wide-panel h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+    }
+    .analysis-loading {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 90;
+    }
+    .analysis-loading.is-open {
+        display: flex;
+    }
+    .analysis-loading-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(24, 24, 28, 0.42);
+        backdrop-filter: blur(5px);
+    }
+    .analysis-loading-panel {
+        position: relative;
+        width: min(460px, 100%);
+        padding: 28px 26px;
+        border-radius: 28px;
+        border: 1px solid #eceef2;
+        background:
+            radial-gradient(circle at top right, rgba(255, 111, 15, 0.16), transparent 28%),
+            #ffffff;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+        text-align: center;
+    }
+    .analysis-loading-spinner {
+        width: 68px;
+        height: 68px;
+        margin: 0 auto 18px;
+        border-radius: 999px;
+        border: 6px solid #ffe4d2;
+        border-top-color: var(--brand);
+        animation: analysis-spin 0.9s linear infinite;
+    }
+    .analysis-loading-panel h3 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.04em;
+    }
+    .analysis-loading-panel p {
+        margin: 10px 0 0;
+        color: #5c6471;
+        line-height: 1.7;
+    }
+    .analysis-loading-tip {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: #fff8f3;
+        color: #8a4b1b;
+        font-weight: 700;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity .2s ease;
+    }
+    @keyframes analysis-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    .analysis-card {
+        padding: 18px;
+        border-radius: 18px;
+        background: #fbfbfc;
+        border: 1px solid #eef0f3;
+    }
+    .analysis-card h3 {
+        margin: 0 0 10px;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+    }
+    .analysis-card p {
+        margin: 0;
+        color: #39404a;
+        line-height: 1.7;
+        white-space: pre-line;
+    }
+    .analysis-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 8px;
+        color: #39404a;
+        line-height: 1.6;
+    }
+    .analysis-subsection {
+        margin-top: 14px;
+    }
+    .analysis-subsection h4 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        letter-spacing: -0.01em;
+        color: #5a6170;
+    }
+    .language-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .language-chips span {
+        display: inline-flex;
+        align-items: center;
+        padding: 9px 12px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: #255fcb;
+        font-weight: 700;
+    }
+    @media (max-width: 880px) {
+        .profile-grid {
+            grid-template-columns: 1fr;
+        }
+        .profile-hero,
+        .profile-panel,
+        .wide-panel {
+            padding: 20px;
+        }
+    }
+</style>
+
+<section class="profile-shell">
+    <div class="profile-hero">
+        <span class="hero-kicker">학생 프로필</span>
+        <h1>{{ request.user.name }}님의 분석 프로필</h1>
+        <p>
+            학번 기반 계정은 그대로 유지하고, GitHub 링크와 이력서를 추가로 등록해 공고 적합도 분석에 쓸 기초 데이터를 쌓는 화면입니다.
+        </p>
+        <div class="profile-meta">
+            <span class="profile-pill">학번 {{ request.user.student_id }}</span>
+            <span class="profile-pill">오늘 분석 {{ daily_analysis_count }}/{{ daily_analysis_limit }}회</span>
+            <span class="profile-pill">남은 횟수 {{ remaining_analysis_count }}회</span>
+            {% if request.user.github_username %}
+            <span class="profile-pill">GitHub @{{ request.user.github_username }}</span>
+            {% endif %}
+            {% if request.user.profile_analyzed_at %}
+            <span class="profile-pill">마지막 분석 {{ request.user.profile_analyzed_at|date:"Y.m.d H:i" }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="profile-grid">
+        <section class="profile-panel">
+            <h2>GitHub 연동 및 이력서 등록</h2>
+            <p class="profile-copy">
+                처음에는 비워두고 나중에 추가해도 됩니다. 먼저 저장해서 DB에 반영하고, 그다음 분석을 돌려 적용하는 흐름입니다.
+            </p>
+            <p class="profile-copy" style="margin-top:-6px;">
+                분석은 하루에 {{ daily_analysis_limit }}번까지 가능합니다. 현재 남은 횟수는 {{ remaining_analysis_count }}번입니다.
+            </p>
+            {% if has_profile_sources and not edit_mode %}
+            <div class="profile-saved">
+                <div class="profile-saved-item">
+                    <strong>현재 GitHub 링크</strong>
+                    <p>
+                        {% if request.user.github_url %}
+                        <a href="{{ request.user.github_url }}" target="_blank" rel="noopener noreferrer">{{ request.user.github_url }}</a>
+                        {% else %}
+                        아직 등록되지 않았습니다.
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="profile-saved-item">
+                    <strong>현재 이력서 파일</strong>
+                    <p>
+                        {% if request.user.resume_file %}
+                        {{ request.user.resume_file.name|cut:"resumes/" }}
+                        {% else %}
+                        아직 등록되지 않았습니다.
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="profile-actions">
+                    <a href="?edit=1" class="nav-link primary">수정하기</a>
+                    <button type="submit" form="profile-analyze-form" class="nav-link" data-analyze-trigger {% if remaining_analysis_count == 0 %}disabled{% endif %}>분석하여 적용하기</button>
+                </div>
+            </div>
+            <form method="post" enctype="multipart/form-data" id="profile-analyze-form" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="github_url" value="{{ request.user.github_url }}">
+                <input type="hidden" name="action" value="analyze">
+            </form>
+            {% else %}
+            <form method="post" enctype="multipart/form-data" class="profile-form">
+                {% csrf_token %}
+                <div class="field-group">
+                    <label for="{{ form.github_url.id_for_label }}">{{ form.github_url.label }}</label>
+                    {{ form.github_url }}
+                    <div class="field-help">예시: `https://github.com/username`</div>
+                    {% if form.github_url.errors %}
+                    <div class="field-errors">{{ form.github_url.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="field-group">
+                    <label for="{{ form.resume_file.id_for_label }}">{{ form.resume_file.label }}</label>
+                    {{ form.resume_file }}
+                    <div class="field-help">PDF 또는 TXT 파일을 업로드할 수 있습니다.</div>
+                    {% if request.user.resume_file %}
+                    <div class="field-help">현재 파일: {{ request.user.resume_file.name|cut:"resumes/" }}</div>
+                    {% endif %}
+                    {% if form.resume_file.errors %}
+                    <div class="field-errors">{{ form.resume_file.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="profile-actions">
+                    <button type="submit" name="action" value="save" class="nav-link profile-submit">저장하기</button>
+                    <button type="submit" name="action" value="analyze" class="nav-link primary profile-submit" data-analyze-trigger {% if remaining_analysis_count == 0 %}disabled{% endif %}>분석하여 적용하기</button>
+                    {% if has_profile_sources %}
+                    <a href="/users/" class="nav-link">취소</a>
+                    {% endif %}
+                </div>
+            </form>
+            {% endif %}
+        </section>
+
+        <section class="profile-panel">
+            <h2>저장된 분석 결과</h2>
+            <p class="profile-copy">
+                분석 결과는 DB에 저장해 두고, 이후 공고 적합도 계산과 추천 기능에서 재사용할 수 있게 구성했습니다.
+            </p>
+
+            <div class="analysis-grid">
+                <article class="analysis-card">
+                    <h3>이력서 요약</h3>
+                    {% if resume_points %}
+                    <ul class="analysis-list">
+                        {% for point in resume_points %}
+                        <li>{{ point }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p>아직 이력서 분석 결과가 없습니다.</p>
+                    {% endif %}
+                </article>
+
+                <article class="analysis-card">
+                    <h3>추천 보완 포인트</h3>
+                    {% if request.user.analysis_recommendation %}
+                    <p>{{ request.user.analysis_recommendation }}</p>
+                    {% else %}
+                    <p>GitHub 링크나 이력서를 등록하면 추천 포인트가 생성됩니다.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+    </div>
+
+    <section class="wide-panel">
+        <h2>프로젝트 및 포트폴리오 정리</h2>
+        <p class="profile-copy">
+            이력서와 GitHub에서 추출한 프로젝트 관련 정보는 아래에 모아 정리했습니다.
+        </p>
+        <div class="analysis-grid">
+            <article class="analysis-card">
+                <h3>이력서 및 GitHub 프로젝트 정리</h3>
+                {% if ai_project_evidence %}
+                <ul class="analysis-list">
+                    {% for item in ai_project_evidence %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                {% elif formatted_github_summary %}
+                <p>{{ formatted_github_summary }}</p>
+                {% else %}
+                <p>아직 프로젝트 정리 결과가 없습니다.</p>
+                {% endif %}
+            </article>
+
+            <article class="analysis-card">
+                <h3>AI 구조화 프로필</h3>
+                {% if formatted_ai_profile_summary %}
+                <p>{{ formatted_ai_profile_summary }}</p>
+                {% if ai_target_roles %}
+                <div class="analysis-subsection">
+                    <h4>권장 직무 방향</h4>
+                    <div class="language-chips">
+                        {% for role in ai_target_roles %}
+                        <span>{{ role }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if ai_core_skills %}
+                <div class="analysis-subsection">
+                    <h4>핵심 기술</h4>
+                    <div class="language-chips">
+                        {% for skill in ai_core_skills %}
+                        <span>{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if ai_strengths %}
+                <div class="analysis-subsection">
+                    <h4>강점</h4>
+                    <ul class="analysis-list">
+                        {% for item in ai_strengths %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if ai_gaps %}
+                <div class="analysis-subsection">
+                    <h4>보완이 필요한 부분</h4>
+                    <ul class="analysis-list">
+                        {% for item in ai_gaps %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if ai_study_priorities %}
+                <div class="analysis-subsection">
+                    <h4>우선 학습 항목</h4>
+                    <ul class="analysis-list">
+                        {% for item in ai_study_priorities %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% elif request.user.ai_profile_error %}
+                <p>AI 프로필 분석 실패: {{ request.user.ai_profile_error }}</p>
+                {% else %}
+                <p>OPENAI_API_KEY가 설정되면 구조화 프로필이 여기에 저장됩니다.</p>
+                {% endif %}
+            </article>
+        </div>
+    </section>
+</section>
+
+<div class="analysis-loading" id="analysis-loading" aria-hidden="true">
+    <div class="analysis-loading-backdrop"></div>
+    <div class="analysis-loading-panel" role="status" aria-live="polite">
+        <div class="analysis-loading-spinner"></div>
+        <h3>분석 중입니다</h3>
+        <p>GitHub와 이력서를 읽고, 프로필 분석을 적용하고 있습니다.</p>
+        <div class="analysis-loading-tip" id="analysis-loading-tip">이력서 속 프로젝트를 하나씩 살펴보는 중입니다.</div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var analyzeButtons = document.querySelectorAll("[data-analyze-trigger]");
+        var loading = document.getElementById("analysis-loading");
+        var tip = document.getElementById("analysis-loading-tip");
+        if (!analyzeButtons.length || !loading || !tip) return;
+
+        var messages = [
+            "이력서 속 프로젝트를 하나씩 살펴보는 중입니다.",
+            "GitHub에서 어떤 기술을 자주 썼는지 모아보는 중입니다.",
+            "요즘 공고와 겹치는 키워드를 조용히 대조하는 중입니다.",
+            "백엔드인지 프론트엔드인지 성향을 추적하는 중입니다.",
+            "AI가 학생 프로필을 읽기 좋은 형태로 정리하는 중입니다.",
+            "추천 공고에 붙일 근거를 문장으로 다듬는 중입니다."
+        ];
+        var timerId = null;
+
+        function openLoading() {
+            var index = 0;
+            loading.classList.add("is-open");
+            loading.setAttribute("aria-hidden", "false");
+            tip.textContent = messages[0];
+            timerId = window.setInterval(function () {
+                index = (index + 1) % messages.length;
+                tip.style.opacity = "0.35";
+                window.setTimeout(function () {
+                    tip.textContent = messages[index];
+                    tip.style.opacity = "1";
+                }, 120);
+            }, 1800);
+        }
+
+        analyzeButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                openLoading();
+            });
+        });
+
+        window.addEventListener("pageshow", function () {
+            if (timerId) {
+                window.clearInterval(timerId);
+                timerId = null;
+            }
+            loading.classList.remove("is-open");
+            loading.setAttribute("aria-hidden", "true");
+        });
+    })();
+</script>
 {% endblock %}

@@ -6,8 +6,10 @@ from planner.services.job_detail import (
     parse_wanted_detail_html,
     split_bullets,
 )
+from planner.services.recommendation import score_job_for_user
 from planner.services.job_sync import SaraminScraper, WantedScraper
 from planner.views import build_main_task_preview
+from users.models import User
 
 
 class JobSyncParsingTests(TestCase):
@@ -216,3 +218,35 @@ class JobCardPreviewTests(TestCase):
         preview = build_main_task_preview(job)
 
         self.assertEqual(preview, ["API 개발", "서버 운영", "테스트 코드 작성"])
+
+
+class JobRecommendationTests(TestCase):
+    def test_score_job_for_user_uses_github_and_resume_data(self):
+        user = User(
+            student_id="20240010",
+            name="추천학생",
+            github_url="https://github.com/reco-user",
+            github_profile_summary="주요 언어 Python, React",
+            github_top_languages="Python, TypeScript",
+            resume_extracted_text="Python Django AWS Git 프로젝트 경험",
+            resume_analysis_summary="백엔드 API 개발과 AWS 배포 경험",
+        )
+        user.resume_file.name = "resumes/test.pdf"
+
+        job = JobPosting(
+            source="wanted",
+            external_id="1",
+            external_url="https://example.com/job",
+            title="백엔드 개발자",
+            company_name="테스트회사",
+            job_role="Backend Engineer",
+            detail_required_skills="Python\nDjango\nAWS\nDocker",
+            detail_requirements="Python 경험\nREST API 개발 경험",
+            detail_main_tasks="백엔드 API 개발\n서비스 운영",
+        )
+
+        result = score_job_for_user(user, job)
+
+        self.assertIsNotNone(result["score"])
+        self.assertGreaterEqual(result["score"], 50)
+        self.assertIn("python", result["matched_skills"])

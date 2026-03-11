@@ -51,3 +51,31 @@ class LoginForm(forms.Form):
 
     def get_user(self):
         return self.user_cache
+
+
+class ProfileUpdateForm(forms.ModelForm):
+    resume_file = forms.FileField(label="이력서 파일", required=False)
+
+    class Meta:
+        model = User
+        fields = ["github_url", "resume_file"]
+        labels = {
+            "github_url": "GitHub 링크",
+            "resume_file": "이력서 파일",
+        }
+
+    def clean_github_url(self):
+        value = (self.cleaned_data.get("github_url") or "").strip()
+        if value and "github.com" not in value:
+            raise forms.ValidationError("GitHub 프로필 링크를 입력해 주세요.")
+        return value
+
+    def clean_resume_file(self):
+        uploaded = self.cleaned_data.get("resume_file")
+        if not uploaded:
+            return uploaded
+
+        name = uploaded.name.lower()
+        if not (name.endswith(".pdf") or name.endswith(".txt")):
+            raise forms.ValidationError("이력서는 PDF 또는 TXT 파일만 업로드할 수 있습니다.")
+        return uploaded

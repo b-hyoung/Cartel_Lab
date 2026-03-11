@@ -6,6 +6,8 @@ from django.utils import timezone
 
 from .models import JobPosting
 from .services.job_detail import fetch_job_detail
+from .services.recommendation import can_score_user, score_job_for_user
+from users.ai_services import generate_job_recommendation, is_openai_configured
 
 
 def index(request):
@@ -78,21 +80,53 @@ def jobs_index(request):
         "-posted_at", "-updated_at", "-id"
         )[:100]
     )
-    jobs.sort(
-        key=lambda job: (
-            0 if job.source == "wanted" else 1,
-            -(job.posted_at.timestamp() if job.posted_at else 0),
-            -job.id,
-        )
-    )
+    scoring_enabled = can_score_user(request.user)
     for job in jobs:
         job.ui_company_mark = build_company_mark(job.company_name)
         job.ui_deadline_label = build_deadline_label(job)
         job.ui_tags = build_job_tags(job)
         job.ui_main_tasks = build_main_task_preview(job)
-    return render(request, "jobs/index.html", {"jobs": jobs})
+        recommendation = score_job_for_user(request.user, job)
+        job.ui_recommendation_score = recommendation["score"]
+        job.ui_recommendation_reasons = recommendation["reasons"]
+
+    jobs.sort(
+        key=lambda job: (
+            0 if job.source == "wanted" else 1,
+            -(job.ui_recommendation_score or -1) if scoring_enabled else 0,
+            -(job.posted_at.timestamp() if job.posted_at else 0),
+            -job.id,
+        )
+    )
+    return render(request, "jobs/index.html", {"jobs": jobs, "scoring_enabled": scoring_enabled})
 
 
 def job_detail_api(request, job_id):
     job = get_object_or_404(JobPosting, pk=job_id, is_active=True)
-    return JsonResponse(fetch_job_detail(job))
+    detail = fetch_job_detail(job)
+    recommendation = score_job_for_user(request.user, job)
+    detail["recommendation_score"] = recommendation["score"]
+    detail["recommendation_reasons"] = recommendation["reasons"]
+    if (
+        is_openai_configured()
+        and getattr(request.user, "is_authenticated", False)
+        and getattr(request.user, "ai_profile_payload", None)
+    ):
+        try:
+            ai_result = generate_job_recommendation(
+                ai_profile=request.user.ai_profile_payload,
+                job_payload={
+                    "title": detail.get("title", ""),
+                    "company_name": detail.get("company_name", ""),
+                    "job_role": detail.get("job_role", ""),
+                    "overview": detail.get("overview", ""),
+                    "main_tasks": detail.get("main_tasks", []),
+                    "requirements": detail.get("requirements", []),
+                    "preferred_points": detail.get("preferred_points", []),
+                    "required_skills": detail.get("required_skills", []),
+                },
+            )
+            detail["ai_recommendation"] = ai_result
+        except Exception as exc:
+            detail["ai_recommendation_error"] = str(exc)
+    return JsonResponse(detail)

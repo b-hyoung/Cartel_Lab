@@ -133,10 +133,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Jobs collection policy
 JOB_ACTIVE_LIMIT_PER_SOURCE = int(os.getenv("JOB_ACTIVE_LIMIT_PER_SOURCE", "300"))
 JOB_ACTIVE_SOURCES = os.getenv("JOB_ACTIVE_SOURCES", "saramin,wanted").split(",")
+GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_PROFILE_MODEL = os.getenv("OPENAI_PROFILE_MODEL", "gpt-4.1-mini")
+OPENAI_JOB_MODEL = os.getenv("OPENAI_JOB_MODEL", "gpt-4.1-mini")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

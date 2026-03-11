@@ -1,6 +1,9 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
+
+DAILY_ANALYSIS_LIMIT = 3
 
 
 class UserManager(BaseUserManager):
@@ -36,6 +39,21 @@ class User(AbstractUser):
     username = None
     student_id = models.CharField("학번", max_length=20, unique=True)
     name = models.CharField("이름", max_length=50)
+    github_url = models.URLField("GitHub 링크", blank=True, default="")
+    github_username = models.CharField("GitHub 아이디", max_length=100, blank=True, default="")
+    github_profile_summary = models.TextField("GitHub 분석 요약", blank=True, default="")
+    github_top_languages = models.TextField("GitHub 주요 언어", blank=True, default="")
+    github_connected_at = models.DateTimeField("GitHub 연동 일시", null=True, blank=True)
+    resume_file = models.FileField("이력서 파일", upload_to="resumes/", blank=True, null=True)
+    resume_extracted_text = models.TextField("이력서 추출 텍스트", blank=True, default="")
+    resume_analysis_summary = models.TextField("이력서 분석 요약", blank=True, default="")
+    analysis_recommendation = models.TextField("학습 추천", blank=True, default="")
+    profile_analyzed_at = models.DateTimeField("분석 일시", null=True, blank=True)
+    ai_profile_summary = models.TextField("AI 프로필 요약", blank=True, default="")
+    ai_profile_payload = models.JSONField("AI 프로필 구조화 데이터", blank=True, default=dict)
+    ai_profile_error = models.TextField("AI 프로필 오류", blank=True, default="")
+    daily_analysis_count = models.PositiveSmallIntegerField("일일 분석 횟수", default=0)
+    daily_analysis_date = models.DateField("분석 횟수 기준일", null=True, blank=True)
 
     objects = UserManager()
 
@@ -44,3 +62,28 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.student_id} {self.name}"
+
+    def mark_github_connected(self):
+        self.github_connected_at = timezone.now()
+
+    def mark_profile_analyzed(self):
+        self.profile_analyzed_at = timezone.now()
+
+    def get_today_analysis_count(self):
+        today = timezone.localdate()
+        if self.daily_analysis_date != today:
+            return 0
+        return self.daily_analysis_count
+
+    def get_remaining_analysis_count(self):
+        return max(0, DAILY_ANALYSIS_LIMIT - self.get_today_analysis_count())
+
+    def can_run_profile_analysis(self):
+        return self.get_remaining_analysis_count() > 0
+
+    def consume_profile_analysis(self):
+        today = timezone.localdate()
+        if self.daily_analysis_date != today:
+            self.daily_analysis_date = today
+            self.daily_analysis_count = 0
+        self.daily_analysis_count += 1

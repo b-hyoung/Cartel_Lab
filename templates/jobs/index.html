@@ -47,6 +47,10 @@
         font-weight: 800;
         letter-spacing: -0.01em;
     }
+    .job-card-badge.match {
+        background: #eef7ea;
+        color: #2f8f2f;
+    }
     .job-card-badge span + span::before {
         content: "|";
         margin-right: 10px;
@@ -165,6 +169,47 @@
         color: #4f5662;
         font-size: 14px;
         line-height: 1.65;
+    }
+    .job-card-reasons {
+        display: grid;
+        gap: 6px;
+        color: #58606d;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .job-match-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px 18px;
+        border: 1px solid #e8edf4;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    }
+    .job-match-box h3 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        letter-spacing: -0.03em;
+    }
+    .job-match-box p {
+        margin: 0;
+        color: #566070;
+        line-height: 1.7;
+    }
+    .job-match-score {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 110px;
+        min-height: 110px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: #255fcb;
+        font-size: 32px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
     }
     .job-modal {
         position: fixed;
@@ -401,6 +446,11 @@
 <p style="margin-top:0; color:var(--muted);">
     사람인과 원티드에서 수집한 신입 중심 채용 공고를 보여줍니다.
 </p>
+{% if not scoring_enabled and request.user.is_authenticated %}
+<p style="margin-top:0; color:var(--muted);">
+    GitHub 링크와 이력서를 모두 등록하면 네 프로필 기준 적합도 점수가 같이 표시됩니다.
+</p>
+{% endif %}
 
 {% if jobs %}
 <div class="jobs-list">
@@ -411,6 +461,11 @@
                 <div class="job-card-badge">
                     <span>신입 가능</span>
                 </div>
+                {% if job.ui_recommendation_score %}
+                <div class="job-card-badge match">
+                    <span>적합도 {{ job.ui_recommendation_score }}점</span>
+                </div>
+                {% endif %}
                 {% if job.ui_deadline_label %}
                 <span class="job-card-deadline">{{ job.ui_deadline_label }}</span>
                 {% endif %}
@@ -452,6 +507,13 @@
             <div class="job-card-preview">
                 <h4>요약</h4>
                 <p>{{ job.summary_text }}</p>
+            </div>
+            {% endif %}
+            {% if job.ui_recommendation_reasons and job.ui_recommendation_score %}
+            <div class="job-card-reasons">
+                {% for reason in job.ui_recommendation_reasons %}
+                <span>{{ reason }}</span>
+                {% endfor %}
             </div>
             {% endif %}
         </div>
@@ -563,6 +625,37 @@
             var requiredSkills = detail.required_skills && detail.required_skills.length
                 ? renderList("기술 스택", detail.required_skills)
                 : "";
+            var recommendationBox = detail.recommendation_score
+                ? [
+                    '<section class="job-modal-section">',
+                    '<div class="job-match-box">',
+                    '<div>',
+                    '<h3>내 프로필 기준 적합도</h3>',
+                    '<p>' + (detail.recommendation_reasons || []).map(escapeHtml).join("<br>") + '</p>',
+                    '</div>',
+                    '<div class="job-match-score">' + escapeHtml(detail.recommendation_score) + '점</div>',
+                    '</div>',
+                    '</section>',
+                ].join("")
+                : "";
+            var aiRecommendationBox = detail.ai_recommendation
+                ? [
+                    '<section class="job-modal-section">',
+                    '<div class="job-match-box">',
+                    '<div>',
+                    '<h3>AI 추천 해석</h3>',
+                    '<p>' + escapeHtml(detail.ai_recommendation.summary || "") + '</p>',
+                    '</div>',
+                    '<div class="job-match-score">' + escapeHtml(detail.ai_recommendation.fit_score) + '점</div>',
+                    '</div>',
+                    '</section>',
+                    renderList("AI가 본 강점", detail.ai_recommendation.strengths || []),
+                    renderList("AI가 본 보완점", detail.ai_recommendation.gaps || []),
+                    renderList("AI 학습 추천", detail.ai_recommendation.study_plan || []),
+                ].join("")
+                : (detail.ai_recommendation_error
+                    ? '<section class="job-modal-section"><p class="job-modal-copy">AI 추천 분석을 불러오지 못했습니다: ' + escapeHtml(detail.ai_recommendation_error) + '</p></section>'
+                    : "");
 
             modalBody.innerHTML = [
                 '<div class="job-modal-hero">',
@@ -574,6 +667,8 @@
                 "</div>",
                 "</div>",
                 '<div class="job-modal-grid">',
+                recommendationBox,
+                aiRecommendationBox,
                 detail.overview ? '<section class="job-modal-section"><h3>공고 요약</h3><p class="job-modal-copy">' + escapeHtml(detail.overview) + "</p></section>" : "",
                 renderList("주요 업무", detail.main_tasks || []),
                 renderList("자격 요건", detail.requirements || []),
