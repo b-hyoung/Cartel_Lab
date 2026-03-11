@@ -1,0 +1,58 @@
+<div class="attendance-table-wrapper">
+    <table class="attendance-table">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>학번</th>
+                <th>상태</th>
+                <th>체크인</th>
+                <th>체크아웃</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record.user.name }}</td>
+                <td>{{ record.user.student_id }}</td>
+                <td>
+                    <span class="status-badge status-{{ record.status }}">
+                        {{ record.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ record.check_in_at|date:"H:i:s" }}</td>
+                <td>{{ record.check_out_at|date:"H:i:s"|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-message">오늘 출석한 인원이 없습니다.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .attendance-table th, .attendance-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+    }
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-present { background: #e6fcf5; color: #0ca678; }
+    .status-late { background: #fff9db; color: #f08c00; }
+    .empty-message {
+        text-align: center;
+        color: var(--muted);
+        padding: 40px 0;
+    }
+</style>

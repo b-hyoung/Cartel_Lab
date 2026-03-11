@@ -1,8 +1,256 @@
 {% extends "base.html" %}
 
-{% block title %}출결 관리{% endblock %}
+{% block title %}출결 현황 - Team Lab{% endblock %}
 
 {% block content %}
-<h1>출결 관리(attendance)</h1>
-<p>실시간 출결과 자리비움 상태 로직을 구현할 영역입니다.</p>
+<div class="attendance-header">
+    <h2>오늘의 출결 현황</h2>
+    <div class="actions">
+        {% if user.is_staff %}
+        <button id="setLocationBtn" class="btn-secondary">현재 위치를 출결지로 설정</button>
+        {% endif %}
+        <button id="checkInBtn" class="btn-primary">출석체크 하기</button>
+        <button id="checkOutBtn" class="btn-danger">퇴실하기</button>
+    </div>
+</div>
+
+<div id="statusMessage" class="status-message"></div>
+
+<!-- HTMX: 5초마다 /attendance/list/를 호출하여 내용을 갱신함 -->
+<div hx-get="{% url 'attendance:list' %}" 
+     hx-trigger="load, every 5s" 
+     hx-target="#attendanceList">
+    <div id="attendanceList">
+        <p class="loading">데이터를 불러오는 중...</p>
+    </div>
+</div>
+
+<style>
+    .attendance-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .btn-primary {
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .2s;
+    }
+    .btn-primary:hover {
+        background: #e15900;
+    }
+    .btn-secondary {
+        background: #f1f2f4;
+        color: var(--text);
+        border: 1px solid var(--line);
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .2s;
+        margin-right: 10px;
+    }
+    .btn-secondary:hover {
+        background: #e1e2e4;
+    }
+    .btn-danger {
+        background: #fa5252;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .2s;
+    }
+    .btn-danger:hover {
+        background: #e03131;
+    }
+    .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+        background: var(--muted);
+        cursor: not-allowed;
+    }
+    .status-message {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 8px;
+        display: none;
+    }
+    .status-success { background: #e6fcf5; color: #0ca678; display: block; }
+    .status-error { background: #fff5f5; color: #fa5252; display: block; }
+    .status-info { background: #e7f5ff; color: #228be6; display: block; }
+    .loading { color: var(--muted); text-align: center; padding: 20px; }
+</style>
+
+<script>
+    const statusDiv = document.getElementById('statusMessage');
+
+    function showMessage(status, message) {
+        statusDiv.className = `status-message status-${status}`;
+        statusDiv.textContent = message;
+        statusDiv.style.display = 'block';
+    }
+
+    // 출석체크 버튼 로직
+    document.getElementById('checkInBtn').addEventListener('click', function() {
+        const btn = this;
+        
+        btn.disabled = true;
+        btn.textContent = '위치 확인 중...';
+        statusDiv.style.display = 'none';
+
+        if (!navigator.geolocation) {
+            showMessage('error', '이 브라우저는 위치 서비스를 지원하지 않습니다.');
+            resetBtn(btn);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                fetch("{% url 'attendance:check-in' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lon
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    showMessage(data.status, data.message);
+                    if (data.status === 'success') {
+                        htmx.trigger('#attendanceList', 'load');
+                    }
+                    resetBtn(btn);
+                })
+                .catch(error => {
+                    showMessage('error', '서버 통신 중 오류가 발생했습니다.');
+                    resetBtn(btn);
+                });
+            },
+            (error) => {
+                let msg = '위치 정보를 가져올 수 없습니다.';
+                if (error.code === 1) msg = '위치 정보 접근 권한이 거부되었습니다.';
+                showMessage('error', msg);
+                resetBtn(btn);
+            }
+        );
+
+        function resetBtn(b) {
+            b.disabled = false;
+            b.textContent = '출석체크 하기';
+        }
+    });
+
+    // 퇴실하기 버튼 로직
+    document.getElementById('checkOutBtn').addEventListener('click', function() {
+        const btn = this;
+        
+        if (!confirm('퇴실 처리를 하시겠습니까?')) return;
+
+        btn.disabled = true;
+        btn.textContent = '위치 확인 중...';
+        statusDiv.style.display = 'none';
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                fetch("{% url 'attendance:check-out' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lon
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    showMessage(data.status, data.message);
+                    if (data.status === 'success') {
+                        htmx.trigger('#attendanceList', 'load');
+                    }
+                    btn.disabled = false;
+                    btn.textContent = '퇴실하기';
+                })
+                .catch(error => {
+                    showMessage('error', '서버 통신 중 오류가 발생했습니다.');
+                    btn.disabled = false;
+                    btn.textContent = '퇴실하기';
+                });
+            },
+            (error) => {
+                showMessage('error', '위치 정보를 가져올 수 없습니다.');
+                btn.disabled = false;
+                btn.textContent = '퇴실하기';
+            }
+        );
+    });
+
+    // 관리자용 위치 설정 버튼 로직
+    const setLocBtn = document.getElementById('setLocationBtn');
+    if (setLocBtn) {
+        setLocBtn.addEventListener('click', function() {
+            const btn = this;
+            
+            if (!confirm('현재 위치를 새로운 출결 허용 위치로 설정하시겠습니까?')) return;
+
+            btn.disabled = true;
+            btn.textContent = '위치 설정 중...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const locationName = prompt('위치 이름을 입력하세요 (예: 연구실)', '연구실') || '연구실';
+
+                    fetch("{% url 'attendance:set-location' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            latitude: lat,
+                            longitude: lon,
+                            name: locationName
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.status, data.message);
+                        btn.disabled = false;
+                        btn.textContent = '현재 위치를 출결지로 설정';
+                    })
+                    .catch(error => {
+                        showMessage('error', '서버 통신 중 오류가 발생했습니다.');
+                        btn.disabled = false;
+                        btn.textContent = '현재 위치를 출결지로 설정';
+                    });
+                },
+                (error) => {
+                    showMessage('error', '위치 정보를 가져올 수 없습니다.');
+                    btn.disabled = false;
+                    btn.textContent = '현재 위치를 출결지로 설정';
+                }
+            );
+        });
+    }
+</script>
 {% endblock %}
