@@ -58,11 +58,10 @@ def _duration_days_from_input(raw_days, default=1):
     return max(1, min(parsed, 60))
 
 
-def _planner_plan_redirect_for_date(target_date, skip_google_sync=False):
+def _planner_plan_redirect_for_date(target_date):
     month = target_date.strftime("%Y-%m")
-    skip_param = "&skip_google_sync=1" if skip_google_sync else ""
     return redirect(
-        f"{reverse('planner-index')}?view=plan&month={month}&date={target_date.isoformat()}{skip_param}"
+        f"{reverse('planner-index')}?view=plan&month={month}&date={target_date.isoformat()}"
     )
 
 
@@ -210,12 +209,10 @@ def index(request):
     calendar_start = current_month - timedelta(days=leading_days)
     calendar_end = calendar_start + timedelta(days=41)
 
-    skip_google_sync = request.GET.get("skip_google_sync") == "1"
     if (
         request.user.is_authenticated
         and planner_view == "plan"
         and hasattr(request.user, "google_calendar_credential")
-        and not skip_google_sync
     ):
         try:
             _sync_google_events_for_range(request.user, calendar_start, calendar_end)
@@ -381,7 +378,7 @@ def toggle_goal(request, goal_id):
         )
 
     goal.delete()
-    return _planner_plan_redirect_for_date(goal_date, skip_google_sync=True)
+    return _planner_plan_redirect_for_date(goal_date)
 
 
 @login_required
@@ -523,7 +520,7 @@ def toggle_daily_todo(request, todo_id):
 
     todo.is_completed = True
     todo.save(update_fields=["is_completed", "updated_at"])
-    return _planner_plan_redirect_for_date(target_date, skip_google_sync=True)
+    return _planner_plan_redirect_for_date(target_date)
 
 
 @login_required
