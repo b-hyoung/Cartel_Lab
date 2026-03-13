@@ -12,7 +12,6 @@ from .google_calendar import (
     GoogleCalendarError,
     build_authorization_url,
     create_todo_event,
-    delete_event,
     exchange_code_for_token,
     fetch_google_email,
     is_configured,
@@ -50,10 +49,11 @@ def _time_from_input(raw_time):
         return None
 
 
-def _planner_plan_redirect_for_date(target_date):
+def _planner_plan_redirect_for_date(target_date, skip_google_sync=False):
     month = target_date.strftime("%Y-%m")
+    skip_param = "&skip_google_sync=1" if skip_google_sync else ""
     return redirect(
-        f"{reverse('planner-index')}?view=plan&month={month}&date={target_date.isoformat()}"
+        f"{reverse('planner-index')}?view=plan&month={month}&date={target_date.isoformat()}{skip_param}"
     )
 
 
@@ -187,10 +187,12 @@ def index(request):
     calendar_start = current_month - timedelta(days=leading_days)
     calendar_end = calendar_start + timedelta(days=41)
 
+    skip_google_sync = request.GET.get("skip_google_sync") == "1"
     if (
         request.user.is_authenticated
         and planner_view == "plan"
         and hasattr(request.user, "google_calendar_credential")
+        and not skip_google_sync
     ):
         try:
             _sync_google_events_for_range(request.user, calendar_start, calendar_end)
@@ -245,7 +247,7 @@ def index(request):
         "selected_goals": selected_goals,
         "lab_wide_goals": LabWideGoal.objects.select_related("created_by")[:8],
         "daily_todos": (
-            DailyTodo.objects.filter(user=request.user, target_date=selected_date)
+            DailyTodo.objects.filter(user=request.user, target_date=selected_date, is_completed=False)
             if request.user.is_authenticated
             else DailyTodo.objects.none()
         ),
@@ -395,13 +397,29 @@ def toggle_daily_todo(request, todo_id):
         return redirect("planner-index")
 
     todo = get_object_or_404(DailyTodo, id=todo_id, user=request.user)
-    todo.is_completed = not todo.is_completed
-    todo.save(update_fields=["is_completed", "updated_at"])
+    target_date = todo.target_date
+    week_start = _week_start_from_input(target_date.isoformat())
+    weekday = (target_date - week_start).days
 
-    month = todo.target_date.strftime("%Y-%m")
-    return redirect(
-        f"{reverse('planner-index')}?view=plan&month={month}&date={todo.target_date.isoformat()}"
-    )
+    already_exists = WeeklyGoal.objects.filter(
+        user=request.user,
+        week_start=week_start,
+        weekday=weekday,
+        content=todo.content,
+        planned_time=todo.planned_time,
+    ).exists()
+    if not already_exists:
+        WeeklyGoal.objects.create(
+            user=request.user,
+            week_start=week_start,
+            weekday=weekday,
+            planned_time=todo.planned_time,
+            content=todo.content,
+        )
+
+    todo.is_completed = True
+    todo.save(update_fields=["is_completed", "updated_at"])
+    return _planner_plan_redirect_for_date(target_date, skip_google_sync=True)
 
 
 @login_required
@@ -411,13 +429,6 @@ def delete_daily_todo(request, todo_id):
 
     todo = get_object_or_404(DailyTodo, id=todo_id, user=request.user)
     target_date = todo.target_date
-
-    credential = getattr(request.user, "google_calendar_credential", None)
-    if credential and todo.google_event_id:
-        try:
-            delete_event(credential, todo.google_event_id)
-        except GoogleCalendarError as exc:
-            messages.warning(request, f"구글 캘린더 일정 삭제에 실패했습니다: {exc}")
 
     todo.delete()
     return _planner_plan_redirect_for_date(target_date)

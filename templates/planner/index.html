@@ -286,6 +286,38 @@
         gap: 7px;
         min-width: 0;
     }
+    .todo-check-form {
+        margin: 0;
+        flex: 0 0 auto;
+    }
+    .todo-check-btn {
+        width: 20px;
+        height: 20px;
+        border: 1.5px solid #d9dde5;
+        border-radius: 6px;
+        background: #fff;
+        color: transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+    .todo-check-icon {
+        opacity: 0;
+        transform: translateY(-0.5px);
+    }
+    .todo-check-btn.is-checked {
+        border-color: var(--planner-orange-deep);
+        background: var(--planner-orange-deep);
+        color: #fff;
+    }
+    .todo-check-btn.is-checked .todo-check-icon {
+        opacity: 1;
+    }
     .daily-todo-actions {
         display: inline-flex;
         align-items: center;
@@ -809,16 +841,16 @@
         {% for todo in daily_todos %}
         <li class="daily-todo-item">
             <span class="daily-todo-main">
+                <form method="post" action="{% url 'planner-daily-todo-toggle' todo.id %}" class="todo-check-form">
+                    {% csrf_token %}
+                    <button type="submit" class="todo-check-btn {% if todo.is_completed %}is-checked{% endif %}" aria-label="투두 완료 토글">
+                        <span class="todo-check-icon">✓</span>
+                    </button>
+                </form>
                 {% if todo.planned_time %}<span class="daily-todo-time">{{ todo.planned_time|time:"H:i" }}</span>{% endif %}
                 <span class="daily-todo-text {% if todo.is_completed %}done{% endif %}">{{ todo.content }}</span>
             </span>
             <span class="daily-todo-actions">
-                <form method="post" action="{% url 'planner-daily-todo-toggle' todo.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="daily-todo-btn {% if todo.is_completed %}done{% endif %}">
-                        {% if todo.is_completed %}완료{% else %}체크{% endif %}
-                    </button>
-                </form>
                 <form method="post" action="{% url 'planner-daily-todo-delete' todo.id %}">
                     {% csrf_token %}
                     <button type="submit" class="daily-todo-btn danger">삭제</button>
