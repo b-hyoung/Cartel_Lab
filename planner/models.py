@@ -166,6 +166,7 @@ class DailyTodo(models.Model):
     planned_time = models.TimeField(null=True, blank=True)
     content = models.CharField(max_length=255)
     is_completed = models.BooleanField(default=False)
+    google_event_id = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -177,4 +178,27 @@ class DailyTodo(models.Model):
 
     def __str__(self):
         return f"{self.user} {self.target_date} {self.content}"
+
+
+class GoogleCalendarCredential(models.Model):
+    """Per-user Google Calendar OAuth credentials."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="google_calendar_credential",
+    )
+    google_email = models.EmailField(blank=True, default="")
+    access_token = models.TextField()
+    refresh_token = models.TextField(blank=True, default="")
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.user} Google Calendar"
 

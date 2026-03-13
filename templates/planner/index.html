@@ -161,6 +161,45 @@
         color: #737984;
         font-size: 13px;
     }
+    .google-sync-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        border: 1px solid #f2dfd2;
+        border-radius: 10px;
+        background: #fff8f3;
+    }
+    .google-sync-text {
+        margin: 0;
+        font-size: 12px;
+        color: #7b4b24;
+    }
+    .google-sync-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .google-sync-link,
+    .google-sync-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .google-sync-link {
+        background: var(--planner-orange);
+        color: #fff;
+    }
+    .google-sync-btn {
+        background: #ffe8d6;
+        color: var(--planner-orange-deep);
+    }
     .daily-todo-open-btn {
         border: 0;
         border-radius: 8px;
@@ -247,6 +286,14 @@
         gap: 7px;
         min-width: 0;
     }
+    .daily-todo-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .daily-todo-actions form {
+        margin: 0;
+    }
     .daily-todo-time {
         font-size: 12px;
         color: #a05a26;
@@ -271,6 +318,11 @@
     .daily-todo-btn.done {
         background: var(--planner-orange-deep);
         color: #fff;
+    }
+    .daily-todo-btn.danger {
+        background: #fff;
+        color: #9f3f10;
+        border: 1px solid #ffd2b3;
     }
     .panel {
         border: 1px solid var(--planner-line);
@@ -704,6 +756,41 @@
     </div>
     <p class="daily-todo-meta">{{ selected_date|date:"Y-m-d (D)" }} 할 일</p>
     {% if request.user.is_authenticated %}
+    {% if google_calendar_enabled %}
+    <div class="google-sync-bar">
+        <p class="google-sync-text">
+            {% if google_calendar_connected %}
+                Google Calendar 연결됨{% if google_calendar_email %} ({{ google_calendar_email }}){% endif %}
+            {% else %}
+                Google Calendar 미연결
+            {% endif %}
+        </p>
+        <div class="google-sync-actions">
+            {% if google_calendar_connected %}
+            <form method="post" action="{% url 'planner-google-calendar-import' %}">
+                {% csrf_token %}
+                <input type="hidden" name="target_date" value="{{ selected_date|date:'Y-m-d' }}">
+                <input type="hidden" name="month" value="{{ current_month|date:'Y-m' }}">
+                <input type="hidden" name="scope" value="day">
+                <button type="submit" class="google-sync-btn">해당일 가져오기</button>
+            </form>
+            <form method="post" action="{% url 'planner-google-calendar-import' %}">
+                {% csrf_token %}
+                <input type="hidden" name="target_date" value="{{ selected_date|date:'Y-m-d' }}">
+                <input type="hidden" name="month" value="{{ current_month|date:'Y-m' }}">
+                <input type="hidden" name="scope" value="month">
+                <button type="submit" class="google-sync-btn">이번달 가져오기</button>
+            </form>
+            <form method="post" action="{% url 'planner-google-calendar-disconnect' %}">
+                {% csrf_token %}
+                <button type="submit" class="google-sync-btn">연결 해제</button>
+            </form>
+            {% else %}
+            <a href="{% url 'planner-google-calendar-connect' %}" class="google-sync-link">구글 연결</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
     <div class="daily-todo-modal" id="daily-todo-modal">
         <div class="add-modal-header">
             <p class="add-modal-title">하루 할 일 추가</p>
@@ -725,12 +812,18 @@
                 {% if todo.planned_time %}<span class="daily-todo-time">{{ todo.planned_time|time:"H:i" }}</span>{% endif %}
                 <span class="daily-todo-text {% if todo.is_completed %}done{% endif %}">{{ todo.content }}</span>
             </span>
-            <form method="post" action="{% url 'planner-daily-todo-toggle' todo.id %}">
-                {% csrf_token %}
-                <button type="submit" class="daily-todo-btn {% if todo.is_completed %}done{% endif %}">
-                    {% if todo.is_completed %}완료{% else %}체크{% endif %}
-                </button>
-            </form>
+            <span class="daily-todo-actions">
+                <form method="post" action="{% url 'planner-daily-todo-toggle' todo.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="daily-todo-btn {% if todo.is_completed %}done{% endif %}">
+                        {% if todo.is_completed %}완료{% else %}체크{% endif %}
+                    </button>
+                </form>
+                <form method="post" action="{% url 'planner-daily-todo-delete' todo.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="daily-todo-btn danger">삭제</button>
+                </form>
+            </span>
         </li>
         {% empty %}
         <li class="empty-box">해당 날짜의 투두가 없습니다. 위에서 추가하세요.</li>

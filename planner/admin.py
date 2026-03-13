@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DailyTodo, LabWideGoal, WeeklyGoal
+from .models import DailyTodo, GoogleCalendarCredential, LabWideGoal, WeeklyGoal
 
 
 @admin.register(WeeklyGoal)
@@ -18,6 +18,20 @@ class LabWideGoalAdmin(admin.ModelAdmin):
 
 @admin.register(DailyTodo)
 class DailyTodoAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "target_date", "planned_time", "content", "is_completed")
+    list_display = (
+        "id",
+        "user",
+        "target_date",
+        "planned_time",
+        "content",
+        "is_completed",
+        "google_event_id",
+    )
     list_filter = ("target_date", "is_completed")
     search_fields = ("user__student_id", "user__name", "content")
+
+
+@admin.register(GoogleCalendarCredential)
+class GoogleCalendarCredentialAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "google_email", "token_expires_at", "updated_at")
+    search_fields = ("user__student_id", "user__name", "google_email")
