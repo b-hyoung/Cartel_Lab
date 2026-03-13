@@ -1,8 +1,927 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}주간 계획표{% endblock %}
 
 {% block content %}
-<h1>주간 계획표(planner)</h1>
-<p>주간 계획표 및 학교 시간표 기능을 구현할 영역입니다.</p>
+<style>
+    :root {
+        --planner-orange: #ff6f0f;
+        --planner-orange-soft: #fff1e8;
+        --planner-orange-deep: #e15c00;
+        --planner-line: #eceef2;
+        --planner-muted: #8b9098;
+    }
+    .planner-switch {
+        display: inline-flex;
+        gap: 6px;
+        border: 1px solid #ffd2b3;
+        border-radius: 10px;
+        padding: 4px;
+        background: #fff8f3;
+        margin-bottom: 14px;
+    }
+    .planner-switch-link {
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 700;
+        color: #8a9099;
+        border-radius: 8px;
+        padding: 8px 14px;
+    }
+    .planner-switch-link.active {
+        background: var(--planner-orange);
+        color: #fff;
+    }
+    .planner-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(310px, 1fr);
+        gap: 16px;
+    }
+    .lab-goal-panel {
+        border: 1px solid var(--planner-line);
+        border-radius: 14px;
+        background: #fff;
+        margin-bottom: 14px;
+        padding: 12px;
+        position: relative;
+        overflow: visible;
+    }
+    .lab-goal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .lab-goal-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--planner-orange-deep);
+        white-space: nowrap;
+    }
+    .lab-goal-open-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .lab-goal-modal {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 56px;
+        z-index: 35;
+        border: 1px solid #ffd2b3;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 12px;
+        display: none;
+    }
+    .lab-goal-modal.is-open {
+        display: block;
+    }
+    .lab-goal-modal-form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+    .lab-goal-modal-form input {
+        width: 100%;
+        border: 1px solid #dfe3ea;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .lab-goal-modal-form button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .lab-goal-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+    }
+    .lab-goal-item {
+        padding: 10px;
+        border: 1px solid #f2e3d7;
+        background: #fffaf5;
+        border-radius: 10px;
+    }
+    .lab-goal-meta {
+        color: #8b9098;
+        font-size: 12px;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .lab-goal-content {
+        display: block;
+        font-size: 14px;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .daily-todo-panel {
+        border: 1px solid var(--planner-line);
+        border-radius: 14px;
+        background: #fff;
+        margin-bottom: 14px;
+        padding: 12px;
+        position: relative;
+        overflow: visible;
+    }
+    .daily-todo-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+    .daily-todo-title {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--planner-orange-deep);
+    }
+    .daily-todo-meta {
+        margin: 0 0 10px;
+        color: #737984;
+        font-size: 13px;
+    }
+    .daily-todo-open-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .daily-todo-modal {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 88px;
+        z-index: 35;
+        border: 1px solid #ffd2b3;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 12px;
+        display: none;
+    }
+    .daily-todo-modal.is-open {
+        display: block;
+    }
+    .daily-todo-form {
+        display: grid;
+        grid-template-columns: 140px 140px 1fr auto;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .daily-todo-form input {
+        border: 1px solid #dfe3ea;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .daily-todo-form button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .daily-todo-form .todo-date {
+        grid-column: 1;
+    }
+    .daily-todo-form .todo-time {
+        grid-column: 2;
+    }
+    .daily-todo-form .todo-submit {
+        grid-column: 4;
+        justify-self: end;
+    }
+    .daily-todo-form .todo-content {
+        grid-column: 1 / -1;
+    }
+    .daily-todo-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+    }
+    .daily-todo-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #eceef2;
+        border-radius: 10px;
+        background: #fff;
+        padding: 8px;
+    }
+    .daily-todo-main {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+    }
+    .daily-todo-time {
+        font-size: 12px;
+        color: #a05a26;
+        font-weight: 700;
+        min-width: 42px;
+    }
+    .daily-todo-text.done {
+        text-decoration: line-through;
+        color: var(--planner-muted);
+    }
+    .daily-todo-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        background: #fff4ea;
+        color: var(--planner-orange-deep);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .daily-todo-btn.done {
+        background: var(--planner-orange-deep);
+        color: #fff;
+    }
+    .panel {
+        border: 1px solid var(--planner-line);
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+    }
+    .calendar-panel {
+        position: relative;
+    }
+    .left-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--planner-line);
+        padding: 12px;
+        background: #fff9f5;
+    }
+    .month-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .month-nav a {
+        text-decoration: none;
+        color: var(--planner-orange-deep);
+        border: 1px solid #ffd2b3;
+        background: var(--planner-orange-soft);
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .month-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
+    .add-menu {
+        border-bottom: 1px solid var(--planner-line);
+        background: #fff;
+        padding: 10px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+    .add-menu-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--planner-orange-deep);
+    }
+    .open-add-modal-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .add-modal {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 116px;
+        z-index: 30;
+        border: 1px solid #ffd2b3;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 12px;
+        display: none;
+    }
+    .add-modal.is-open {
+        display: block;
+    }
+    .add-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .add-modal-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--planner-orange-deep);
+    }
+    .close-add-modal-btn {
+        border: 0;
+        background: transparent;
+        color: #8a9099;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .add-form {
+        display: grid;
+        grid-template-columns: 140px 120px 1fr auto;
+        gap: 8px;
+    }
+    .add-form input,
+    .detail-item input[type="text"] {
+        border: 1px solid #dfe3ea;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .add-form button,
+    .goal-toggle-btn,
+    .detail-item button {
+        border: 0;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .add-form button {
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+    }
+    .calendar-head {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        background: #fafafb;
+        border-bottom: 1px solid var(--planner-line);
+    }
+    .calendar-head div {
+        text-align: center;
+        padding: 10px 4px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--planner-muted);
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    .day-cell {
+        min-height: 108px;
+        border-right: 1px solid var(--planner-line);
+        border-bottom: 1px solid var(--planner-line);
+        padding: 6px;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        background: #fff;
+    }
+    .day-cell:nth-child(7n) {
+        border-right: none;
+    }
+    .day-cell:hover {
+        background: #fffcf9;
+    }
+    .day-cell.out-month {
+        background: #fcfcfd;
+        color: #bdc2cb;
+    }
+    .day-cell.selected {
+        background: #fff5ee;
+        box-shadow: inset 0 0 0 1px #ffd2b3;
+    }
+    .day-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .day-num.today {
+        background: var(--planner-orange);
+        color: #fff;
+    }
+    .mini-list {
+        margin-top: 6px;
+        display: grid;
+        gap: 3px;
+    }
+    .mini-item {
+        font-size: 11px;
+        line-height: 1.25;
+        padding: 2px 5px;
+        border-radius: 6px;
+        background: #fff1e7;
+        color: #9a4c12;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .mini-time {
+        font-weight: 700;
+        margin-right: 3px;
+    }
+    .mini-more {
+        font-size: 11px;
+        color: #7a7f88;
+    }
+    .detail-header {
+        padding: 14px 14px 12px;
+        border-bottom: 1px solid var(--planner-line);
+        background: #fff9f5;
+    }
+    .detail-title {
+        margin: 0 0 4px;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+    }
+    .detail-date {
+        margin: 0;
+        color: #737984;
+        font-size: 13px;
+    }
+    .detail-body {
+        padding: 12px;
+        position: relative;
+    }
+    .detail-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 8px;
+    }
+    .detail-item {
+        border: 1px solid #ebedf2;
+        border-radius: 10px;
+        padding: 8px;
+        display: grid;
+        gap: 7px;
+        background: #fff;
+    }
+    .detail-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .detail-row.space-between {
+        justify-content: space-between;
+    }
+    .detail-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .goal-toggle-btn {
+        padding: 6px 10px;
+        background: #fff4ea;
+        color: var(--planner-orange-deep);
+    }
+    .goal-toggle-btn.is-completed {
+        background: var(--planner-orange-deep);
+        color: #fff;
+    }
+    .goal-edit-open-btn {
+        padding: 6px 10px;
+        border: 0;
+        border-radius: 8px;
+        background: #ffe8d6;
+        color: var(--planner-orange-deep);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .detail-item button {
+        padding: 7px 10px;
+        background: var(--planner-orange-soft);
+        color: var(--planner-orange-deep);
+    }
+    .goal-text.done {
+        text-decoration: line-through;
+        color: var(--planner-muted);
+    }
+    .goal-time {
+        display: inline-block;
+        font-size: 12px;
+        color: #a05a26;
+        font-weight: 700;
+        min-width: 46px;
+    }
+    .empty-box {
+        color: var(--planner-muted);
+        font-size: 14px;
+        border: 1px dashed #d9dce3;
+        border-radius: 10px;
+        padding: 12px;
+        background: #fcfcfd;
+    }
+    .edit-modal {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        z-index: 25;
+        border: 1px solid #ffd2b3;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        padding: 12px;
+        display: none;
+    }
+    .edit-modal.is-open {
+        display: block;
+    }
+    .edit-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .edit-modal-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--planner-orange-deep);
+    }
+    .edit-form {
+        display: grid;
+        grid-template-columns: 120px 1fr auto;
+        gap: 8px;
+    }
+    .edit-form input {
+        border: 1px solid #dfe3ea;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .edit-form button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--planner-orange);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    @media (max-width: 1080px) {
+        .planner-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 680px) {
+        .lab-goal-head {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .lab-goal-open-btn {
+            width: 100%;
+        }
+        .lab-goal-modal-form {
+            grid-template-columns: 1fr;
+        }
+        .daily-todo-head {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .daily-todo-open-btn {
+            width: 100%;
+        }
+        .daily-todo-form {
+            grid-template-columns: 1fr;
+        }
+        .add-form {
+            grid-template-columns: 1fr;
+        }
+        .day-cell {
+            min-height: 95px;
+        }
+    }
+</style>
+
+<div class="planner-switch">
+    <a href="{% url 'planner-index' %}?view=plan&month={{ current_month|date:'Y-m' }}&date={{ selected_date|date:'Y-m-d' }}" class="planner-switch-link {% if planner_view == 'plan' %}active{% endif %}">계획</a>
+    <a href="{% url 'planner-index' %}?view=goal" class="planner-switch-link {% if planner_view == 'goal' %}active{% endif %}">목표</a>
+</div>
+
+{% if planner_view == "goal" %}
+<section class="lab-goal-panel">
+    <div class="lab-goal-head">
+        <h2 class="lab-goal-title">랩실 전체 목표</h2>
+        {% if request.user.is_authenticated %}
+        <button type="button" class="lab-goal-open-btn" id="open-lab-goal-modal">추가</button>
+        {% else %}
+        <p class="lab-goal-meta">로그인하면 랩실 목표를 추가할 수 있습니다.</p>
+        {% endif %}
+    </div>
+    {% if request.user.is_authenticated %}
+    <div class="lab-goal-modal" id="lab-goal-modal">
+        <div class="add-modal-header">
+            <p class="add-modal-title">랩실 전체 목표 추가</p>
+            <button type="button" class="close-add-modal-btn" id="close-lab-goal-modal" aria-label="랩실 목표 팝업 닫기">×</button>
+        </div>
+        <form method="post" action="{% url 'planner-lab-goal-add' %}" class="lab-goal-modal-form">
+            {% csrf_token %}
+            <input type="text" name="content" maxlength="255" placeholder="랩실 공용 목표 입력" required>
+            <button type="submit">추가하기</button>
+        </form>
+    </div>
+    {% endif %}
+    <ul class="lab-goal-list">
+        {% for lab_goal in lab_wide_goals %}
+        <li class="lab-goal-item">
+            <span class="lab-goal-meta">{{ lab_goal.created_by.name }} | {{ lab_goal.created_at|date:"m-d H:i" }}</span>
+            <span class="lab-goal-content">{{ lab_goal.content }}</span>
+        </li>
+        {% empty %}
+        <li class="empty-box">등록된 랩실 전체 목표가 없습니다.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if planner_view == "plan" %}
+<section class="daily-todo-panel">
+    <div class="daily-todo-head">
+        <h2 class="daily-todo-title">오늘의 투두 리스트</h2>
+        {% if request.user.is_authenticated %}
+        <button type="button" class="daily-todo-open-btn" id="open-daily-todo-modal">추가</button>
+        {% endif %}
+    </div>
+    <p class="daily-todo-meta">{{ selected_date|date:"Y-m-d (D)" }} 할 일</p>
+    {% if request.user.is_authenticated %}
+    <div class="daily-todo-modal" id="daily-todo-modal">
+        <div class="add-modal-header">
+            <p class="add-modal-title">하루 할 일 추가</p>
+            <button type="button" class="close-add-modal-btn" id="close-daily-todo-modal" aria-label="투두 팝업 닫기">×</button>
+        </div>
+        <form method="post" action="{% url 'planner-daily-todo-add' %}" class="daily-todo-form">
+            {% csrf_token %}
+            <input type="date" name="target_date" class="todo-date" value="{{ selected_date|date:'Y-m-d' }}" required>
+            <input type="time" name="planned_time" class="todo-time">
+            <input type="hidden" name="month" value="{{ current_month|date:'Y-m' }}">
+            <button type="submit" class="todo-submit">추가하기</button>
+            <input type="text" name="content" class="todo-content" maxlength="255" placeholder="하루 시작 전 할 일 입력" required>
+        </form>
+    </div>
+    <ul class="daily-todo-list">
+        {% for todo in daily_todos %}
+        <li class="daily-todo-item">
+            <span class="daily-todo-main">
+                {% if todo.planned_time %}<span class="daily-todo-time">{{ todo.planned_time|time:"H:i" }}</span>{% endif %}
+                <span class="daily-todo-text {% if todo.is_completed %}done{% endif %}">{{ todo.content }}</span>
+            </span>
+            <form method="post" action="{% url 'planner-daily-todo-toggle' todo.id %}">
+                {% csrf_token %}
+                <button type="submit" class="daily-todo-btn {% if todo.is_completed %}done{% endif %}">
+                    {% if todo.is_completed %}완료{% else %}체크{% endif %}
+                </button>
+            </form>
+        </li>
+        {% empty %}
+        <li class="empty-box">해당 날짜의 투두가 없습니다. 위에서 추가하세요.</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty-box">투두리스트를 사용하려면 로그인하세요.</p>
+    {% endif %}
+</section>
+
+<div class="planner-layout">
+    <section class="panel calendar-panel">
+        <div class="left-topbar">
+            <h1 class="month-title">{{ current_month|date:"Y-m" }}</h1>
+            <div class="month-nav">
+                <a href="{% url 'planner-index' %}?view=plan&month={{ prev_month|date:'Y-m' }}&date={{ selected_date|date:'Y-m-d' }}">이전 달</a>
+                <a href="{% url 'planner-index' %}?view=plan&month={{ next_month|date:'Y-m' }}&date={{ selected_date|date:'Y-m-d' }}">다음 달</a>
+            </div>
+        </div>
+
+        <div class="add-menu">
+            <p class="add-menu-title">추가 메뉴</p>
+            <button type="button" class="open-add-modal-btn" id="open-add-modal">추가</button>
+        </div>
+
+        <div class="add-modal" id="add-modal">
+            <div class="add-modal-header">
+                <p class="add-modal-title">일정 추가</p>
+                <button type="button" class="close-add-modal-btn" id="close-add-modal" aria-label="팝업 닫기">×</button>
+            </div>
+            <form method="post" action="{% url 'planner-goal-add' %}" class="add-form">
+                {% csrf_token %}
+                <input type="date" name="target_date" value="{{ selected_date|date:'Y-m-d' }}" required>
+                <input type="time" name="planned_time">
+                <input type="text" name="content" maxlength="255" placeholder="목표 입력" required>
+                <button type="submit">추가하기</button>
+            </form>
+        </div>
+
+        <div class="calendar-head">
+            <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+        </div>
+        <div class="calendar-grid">
+            {% for week in weeks %}
+                {% for day in week %}
+                <a class="day-cell{% if not day.is_current_month %} out-month{% endif %}{% if day.is_selected %} selected{% endif %}"
+                   href="{% url 'planner-index' %}?view=plan&month={{ current_month|date:'Y-m' }}&date={{ day.date|date:'Y-m-d' }}">
+                    <span class="day-num{% if day.is_today %} today{% endif %}">{{ day.date|date:"j" }}</span>
+                    <div class="mini-list">
+                        {% for goal in day.preview_goals %}
+                        <div class="mini-item">
+                            {% if goal.planned_time %}<span class="mini-time">{{ goal.planned_time|time:"H:i" }}</span>{% endif %}
+                            {{ goal.content }}
+                        </div>
+                        {% endfor %}
+                        {% if day.more_count > 0 %}
+                        <div class="mini-more">+{{ day.more_count }}개 더</div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="panel">
+        <div class="detail-header">
+            <h2 class="detail-title">선택한 날짜 계획</h2>
+            <p class="detail-date">{{ selected_date|date:"Y-m-d (D)" }}</p>
+        </div>
+        <div class="detail-body">
+            <div class="edit-modal" id="edit-modal">
+                <div class="edit-modal-header">
+                    <p class="edit-modal-title">계획 수정</p>
+                    <button type="button" class="close-add-modal-btn" id="close-edit-modal" aria-label="수정 팝업 닫기">×</button>
+                </div>
+                <form method="post" id="edit-modal-form" class="edit-form">
+                    {% csrf_token %}
+                    <input type="time" name="planned_time" id="edit-modal-time">
+                    <input type="text" name="content" id="edit-modal-content" maxlength="255" required>
+                    <button type="submit">저장</button>
+                </form>
+            </div>
+            <ul class="detail-list">
+                {% for goal in selected_goals %}
+                <li class="detail-item">
+                    <div class="detail-row space-between">
+                        <span>
+                            {% if goal.planned_time %}<span class="goal-time">{{ goal.planned_time|time:"H:i" }}</span>{% endif %}
+                            <span class="goal-text {% if goal.is_completed %}done{% endif %}">{{ goal.content }}</span>
+                        </span>
+                        <div class="detail-actions">
+                        <form method="post" action="{% url 'planner-goal-toggle' goal.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="goal-toggle-btn {% if goal.is_completed %}is-completed{% endif %}">완료</button>
+                        </form>
+                            <button
+                                type="button"
+                                class="goal-edit-open-btn"
+                                data-edit-url="{% url 'planner-goal-update' goal.id %}"
+                                data-goal-content="{{ goal.content|escape }}"
+                                data-goal-time="{% if goal.planned_time %}{{ goal.planned_time|time:'H:i' }}{% endif %}"
+                            >
+                                수정
+                            </button>
+                        </div>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="empty-box">이 날짜에 등록된 계획이 없습니다. 캘린더의 추가 버튼으로 등록하세요.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+</div>
+{% endif %}
+
+<script>
+    (function () {
+        var openBtn = document.getElementById("open-add-modal");
+        var closeBtn = document.getElementById("close-add-modal");
+        var modal = document.getElementById("add-modal");
+        var editModal = document.getElementById("edit-modal");
+        var closeEditBtn = document.getElementById("close-edit-modal");
+        var editForm = document.getElementById("edit-modal-form");
+        var editInput = document.getElementById("edit-modal-content");
+        var editTimeInput = document.getElementById("edit-modal-time");
+        var editOpenButtons = document.querySelectorAll(".goal-edit-open-btn");
+        var labOpenBtn = document.getElementById("open-lab-goal-modal");
+        var labCloseBtn = document.getElementById("close-lab-goal-modal");
+        var labModal = document.getElementById("lab-goal-modal");
+        var dailyOpenBtn = document.getElementById("open-daily-todo-modal");
+        var dailyCloseBtn = document.getElementById("close-daily-todo-modal");
+        var dailyModal = document.getElementById("daily-todo-modal");
+        if (!openBtn || !closeBtn || !modal) return;
+
+        openBtn.addEventListener("click", function () {
+            modal.classList.add("is-open");
+        });
+
+        closeBtn.addEventListener("click", function () {
+            modal.classList.remove("is-open");
+        });
+
+        if (editModal && closeEditBtn && editForm && editInput && editTimeInput) {
+            editOpenButtons.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    editForm.setAttribute("action", button.getAttribute("data-edit-url"));
+                    editInput.value = button.getAttribute("data-goal-content") || "";
+                    editTimeInput.value = button.getAttribute("data-goal-time") || "";
+                    editModal.classList.add("is-open");
+                });
+            });
+
+            closeEditBtn.addEventListener("click", function () {
+                editModal.classList.remove("is-open");
+            });
+        }
+
+        if (labOpenBtn && labCloseBtn && labModal) {
+            labOpenBtn.addEventListener("click", function () {
+                labModal.classList.add("is-open");
+            });
+            labCloseBtn.addEventListener("click", function () {
+                labModal.classList.remove("is-open");
+            });
+        }
+
+        if (dailyOpenBtn && dailyCloseBtn && dailyModal) {
+            dailyOpenBtn.addEventListener("click", function () {
+                dailyModal.classList.add("is-open");
+            });
+            dailyCloseBtn.addEventListener("click", function () {
+                dailyModal.classList.remove("is-open");
+            });
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                modal.classList.remove("is-open");
+                if (editModal) {
+                    editModal.classList.remove("is-open");
+                }
+                if (labModal) {
+                    labModal.classList.remove("is-open");
+                }
+                if (dailyModal) {
+                    dailyModal.classList.remove("is-open");
+                }
+            }
+        });
+    })();
+</script>
 {% endblock %}
