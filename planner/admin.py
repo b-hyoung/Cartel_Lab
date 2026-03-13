@@ -5,8 +5,8 @@ from .models import DailyTodo, GoogleCalendarCredential, LabWideGoal, WeeklyGoal
 
 @admin.register(WeeklyGoal)
 class WeeklyGoalAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "week_start", "weekday", "content", "is_completed")
-    list_filter = ("week_start", "weekday", "is_completed")
+    list_display = ("id", "user", "week_start", "weekday", "color", "content", "is_completed")
+    list_filter = ("week_start", "weekday", "color", "is_completed")
     search_fields = ("user__student_id", "user__name", "content")
 
 
@@ -23,11 +23,12 @@ class DailyTodoAdmin(admin.ModelAdmin):
         "user",
         "target_date",
         "planned_time",
+        "color",
         "content",
         "is_completed",
         "google_event_id",
     )
-    list_filter = ("target_date", "is_completed")
+    list_filter = ("target_date", "color", "is_completed")
     search_fields = ("user__student_id", "user__name", "content")
 
 

@@ -112,6 +112,11 @@ class WeeklyGoal(models.Model):
         (5, "Fri"),
         (6, "Sat"),
     ]
+    COLOR_CHOICES = [
+        ("red", "Red"),
+        ("blue", "Blue"),
+        ("yellow", "Yellow"),
+    ]
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -121,6 +126,7 @@ class WeeklyGoal(models.Model):
     week_start = models.DateField(help_text="Week start date (Sunday)")
     weekday = models.PositiveSmallIntegerField(choices=DAY_CHOICES)
     planned_time = models.TimeField(null=True, blank=True)
+    color = models.CharField(max_length=10, choices=COLOR_CHOICES, default="red")
     content = models.CharField(max_length=255)
     is_completed = models.BooleanField(default=False)
     google_event_id = models.CharField(max_length=255, blank=True, default="")
@@ -157,6 +163,11 @@ class LabWideGoal(models.Model):
 
 class DailyTodo(models.Model):
     """Per-user daily todo items."""
+    COLOR_CHOICES = [
+        ("red", "Red"),
+        ("blue", "Blue"),
+        ("yellow", "Yellow"),
+    ]
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -165,6 +176,7 @@ class DailyTodo(models.Model):
     )
     target_date = models.DateField()
     planned_time = models.TimeField(null=True, blank=True)
+    color = models.CharField(max_length=10, choices=COLOR_CHOICES, default="red")
     content = models.CharField(max_length=255)
     is_completed = models.BooleanField(default=False)
     google_event_id = models.CharField(max_length=255, blank=True, default="")

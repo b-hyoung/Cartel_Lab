@@ -58,6 +58,66 @@ def _duration_days_from_input(raw_days, default=1):
     return max(1, min(parsed, 60))
 
 
+def _color_from_input(raw_color):
+    if raw_color in {"red", "blue", "yellow"}:
+        return raw_color
+    return "red"
+
+
+def _find_contiguous_goal_ids(user, anchor_date, content, planned_time):
+    """Find contiguous same-schedule goals around anchor date."""
+    ids = set()
+
+    same_day = WeeklyGoal.objects.filter(
+        user=user,
+        week_start=_week_start_from_input(anchor_date.isoformat()),
+        weekday=(anchor_date - _week_start_from_input(anchor_date.isoformat())).days,
+        content=content,
+        planned_time=planned_time,
+    ).values_list("id", flat=True)
+    ids.update(same_day)
+
+    step = 1
+    while True:
+        probe_date = anchor_date - timedelta(days=step)
+        probe_week_start = _week_start_from_input(probe_date.isoformat())
+        probe_weekday = (probe_date - probe_week_start).days
+        matches = list(
+            WeeklyGoal.objects.filter(
+                user=user,
+                week_start=probe_week_start,
+                weekday=probe_weekday,
+                content=content,
+                planned_time=planned_time,
+            ).values_list("id", flat=True)
+        )
+        if not matches:
+            break
+        ids.update(matches)
+        step += 1
+
+    step = 1
+    while True:
+        probe_date = anchor_date + timedelta(days=step)
+        probe_week_start = _week_start_from_input(probe_date.isoformat())
+        probe_weekday = (probe_date - probe_week_start).days
+        matches = list(
+            WeeklyGoal.objects.filter(
+                user=user,
+                week_start=probe_week_start,
+                weekday=probe_weekday,
+                content=content,
+                planned_time=planned_time,
+            ).values_list("id", flat=True)
+        )
+        if not matches:
+            break
+        ids.update(matches)
+        step += 1
+
+    return ids
+
+
 def _planner_plan_redirect_for_date(target_date):
     month = target_date.strftime("%Y-%m")
     return redirect(
@@ -314,6 +374,7 @@ def add_goal(request):
     start_date_raw = request.POST.get("start_date")
     duration_raw = request.POST.get("duration_days", "1")
     planned_time = _time_from_input(request.POST.get("planned_time"))
+    color = _color_from_input(request.POST.get("color"))
     start_date = None
 
     duration_days = _duration_days_from_input(duration_raw, default=1)
@@ -332,8 +393,11 @@ def add_goal(request):
                 target_date=target_date,
                 planned_time=planned_time,
                 content=content,
-                defaults={"is_completed": False},
+                defaults={"is_completed": False, "color": color},
             )
+            if not created and todo.color != color:
+                todo.color = color
+                todo.save(update_fields=["color", "updated_at"])
             if created and hasattr(request.user, "google_calendar_credential"):
                 try:
                     _sync_daily_todo_create(todo)
@@ -365,6 +429,7 @@ def toggle_goal(request, goal_id):
         target_date=goal_date,
         planned_time=goal.planned_time,
         content=goal.content,
+        color=goal.color,
         is_completed=False,
     ).exists()
     if not existing_todo:
@@ -372,6 +437,7 @@ def toggle_goal(request, goal_id):
             user=request.user,
             target_date=goal_date,
             planned_time=goal.planned_time,
+            color=goal.color,
             content=goal.content,
             google_event_id=goal.google_event_id,
             is_completed=False,
@@ -387,8 +453,13 @@ def update_goal(request, goal_id):
         return redirect("planner-index")
 
     goal = get_object_or_404(WeeklyGoal, id=goal_id, user=request.user)
+    original_goal_date = _goal_date(goal)
+    original_content = goal.content
+    original_planned_time = goal.planned_time
+    original_color = goal.color
     content = request.POST.get("content", "").strip()
     planned_time = _time_from_input(request.POST.get("planned_time"))
+    color = _color_from_input(request.POST.get("color"))
     start_date_raw = request.POST.get("start_date", "")
     duration_days = _duration_days_from_input(request.POST.get("duration_days", "1"), default=1)
 
@@ -400,13 +471,27 @@ def update_goal(request, goal_id):
             pass
 
     if content:
+        contiguous_ids = _find_contiguous_goal_ids(
+            request.user,
+            original_goal_date,
+            original_content,
+            original_planned_time,
+        )
+
+        if color != original_color and contiguous_ids:
+            WeeklyGoal.objects.filter(id__in=contiguous_ids).update(
+                color=color,
+                updated_at=timezone.now(),
+            )
+
         first_week_start = _week_start_from_input(goal_date.isoformat())
         first_weekday = (goal_date - first_week_start).days
         goal.week_start = first_week_start
         goal.weekday = first_weekday
         goal.content = content
         goal.planned_time = planned_time
-        goal.save(update_fields=["week_start", "weekday", "content", "planned_time", "updated_at"])
+        goal.color = color
+        goal.save(update_fields=["week_start", "weekday", "content", "planned_time", "color", "updated_at"])
 
         created_goals_with_dates = []
         for offset in range(1, duration_days):
@@ -419,6 +504,7 @@ def update_goal(request, goal_id):
                 weekday=target_weekday,
                 content=content,
                 planned_time=planned_time,
+                color=color,
             ).exists()
             if exists:
                 continue
@@ -428,6 +514,7 @@ def update_goal(request, goal_id):
                 week_start=target_week_start,
                 weekday=target_weekday,
                 planned_time=planned_time,
+                color=color,
                 content=content,
             )
             created_goals_with_dates.append((new_goal, target_date))
@@ -464,6 +551,7 @@ def add_daily_todo(request):
 
     content = request.POST.get("content", "").strip()
     planned_time = _time_from_input(request.POST.get("planned_time"))
+    color = _color_from_input(request.POST.get("color"))
     target_date_raw = request.POST.get("target_date")
     month_raw = request.POST.get("month")
     target_date = timezone.localdate()
@@ -478,6 +566,7 @@ def add_daily_todo(request):
             user=request.user,
             target_date=target_date,
             planned_time=planned_time,
+            color=color,
             content=content,
         )
         if hasattr(request.user, "google_calendar_credential"):
@@ -508,6 +597,7 @@ def toggle_daily_todo(request, todo_id):
         weekday=weekday,
         content=todo.content,
         planned_time=todo.planned_time,
+        color=todo.color,
     ).exists()
     if not already_exists:
         WeeklyGoal.objects.create(
@@ -515,6 +605,7 @@ def toggle_daily_todo(request, todo_id):
             week_start=week_start,
             weekday=weekday,
             planned_time=todo.planned_time,
+            color=todo.color,
             content=todo.content,
         )
 
