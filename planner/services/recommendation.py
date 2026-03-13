@@ -68,12 +68,18 @@ def extract_profile_skills(user) -> set[str]:
 def detect_profile_roles(user) -> set[str]:
     if getattr(user, "ai_profile_payload", None):
         roles = user.ai_profile_payload.get("target_roles", [])
-        return {normalize_text(role) for role in roles if normalize_text(role)}
+        selected_direction = normalize_text(getattr(user, "get_selected_job_direction", lambda: "")())
+        detected = {normalize_text(role) for role in roles if normalize_text(role)}
+        if selected_direction:
+            detected.add(selected_direction)
+        return detected
 
     combined = " ".join(
         filter(
             None,
             [
+                getattr(user, "desired_job_direction", ""),
+                getattr(user, "desired_job_direction_other", ""),
                 user.github_profile_summary,
                 user.resume_extracted_text,
                 user.resume_analysis_summary,
@@ -131,17 +137,22 @@ def score_job_for_user(user, job) -> dict:
 
     matched_skills = sorted(profile_skills & job_skills)
     matched_roles = sorted(profile_roles & job_roles)
+    selected_direction = normalize_text(getattr(user, "get_selected_job_direction", lambda: "")())
+    direction_matches = selected_direction and any(selected_direction in role or role in selected_direction for role in matched_roles)
 
     skill_score = min(60, len(matched_skills) * 12)
     role_score = 20 if matched_roles else 0
+    direction_score = 10 if direction_matches else 0
     evidence_score = 20 if user.github_profile_summary and user.resume_analysis_summary else 10
-    score = min(99, skill_score + role_score + evidence_score)
+    score = min(99, skill_score + role_score + direction_score + evidence_score)
 
     reasons = []
     if matched_skills:
         reasons.append("겹치는 기술: " + ", ".join(matched_skills[:4]))
     if matched_roles:
         reasons.append("맞는 직무 방향: " + ", ".join(matched_roles))
+    if direction_matches:
+        reasons.append("선택한 희망 방향과 직접 연결되는 공고입니다.")
     if not reasons:
         reasons.append("직접 겹치는 기술 근거는 적지만 신입 기준으로 탐색 가능한 공고입니다.")
 

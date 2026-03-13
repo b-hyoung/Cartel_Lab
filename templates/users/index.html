@@ -31,12 +31,14 @@
         display: grid;
         grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
         gap: 18px;
+        align-items: start;
     }
     .profile-panel {
         padding: 24px;
         border: 1px solid var(--line);
         border-radius: 22px;
         background: #fff;
+        align-self: start;
     }
     .profile-panel h2 {
         margin: 0 0 8px;
@@ -77,7 +79,8 @@
         font-size: 14px;
     }
     .field-group input[type="url"],
-    .field-group input[type="file"] {
+    .field-group input[type="file"],
+    .field-group input[type="text"] {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid #dfe3ea;
@@ -139,6 +142,35 @@
         display: grid;
         gap: 16px;
     }
+    .analysis-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .analysis-mini-card {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid #eef0f3;
+        background: #fbfbfc;
+    }
+    .analysis-mini-card strong {
+        display: block;
+        font-size: 13px;
+        color: #687180;
+        margin-bottom: 8px;
+    }
+    .analysis-mini-card p {
+        margin: 0;
+        color: #22262d;
+        line-height: 1.6;
+        font-weight: 700;
+    }
+    .analysis-mini-card small {
+        display: block;
+        margin-top: 8px;
+        color: #6a7280;
+        line-height: 1.6;
+    }
     .wide-panel {
         padding: 24px;
         border: 1px solid var(--line);
@@ -162,11 +194,178 @@
     .analysis-loading.is-open {
         display: flex;
     }
+    .analysis-choice-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 95;
+    }
+    .analysis-choice-modal.is-open {
+        display: flex;
+    }
     .analysis-loading-backdrop {
         position: absolute;
         inset: 0;
         background: rgba(24, 24, 28, 0.42);
         backdrop-filter: blur(5px);
+    }
+    .analysis-choice-panel {
+        position: relative;
+        width: min(920px, 100%);
+        max-height: min(88vh, 920px);
+        overflow: auto;
+        padding: 28px 26px;
+        border-radius: 28px;
+        border: 1px solid #eceef2;
+        background:
+            radial-gradient(circle at top right, rgba(255, 111, 15, 0.16), transparent 26%),
+            #ffffff;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+    }
+    .analysis-choice-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .analysis-choice-header h3 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.04em;
+    }
+    .analysis-choice-header p {
+        margin: 10px 0 0;
+        color: #5c6471;
+        line-height: 1.7;
+    }
+    .analysis-choice-close {
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-size: 26px;
+        cursor: pointer;
+        color: #4f5865;
+    }
+    .analysis-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+    .analysis-choice-card {
+        position: relative;
+        display: block;
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid #e6e9ee;
+        background: #fbfbfd;
+        cursor: pointer;
+        min-height: 166px;
+        transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .analysis-choice-card:hover {
+        transform: translateY(-1px);
+        border-color: #ffb68f;
+        box-shadow: 0 16px 32px rgba(255, 111, 15, 0.09);
+    }
+    .analysis-choice-card input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .analysis-choice-card strong {
+        display: block;
+        font-size: 20px;
+        letter-spacing: -0.03em;
+    }
+    .analysis-choice-card small {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: #255fcb;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .analysis-choice-card p {
+        margin: 12px 0 0;
+        color: #526070;
+        line-height: 1.7;
+    }
+    .analysis-choice-card.is-selected {
+        border-color: #ff6f0f;
+        background: #fff6ef;
+        box-shadow: 0 18px 36px rgba(255, 111, 15, 0.12);
+    }
+    .analysis-choice-card.is-selected::after {
+        content: "";
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 18px;
+        height: 18px;
+        border-radius: 6px;
+        background: #ff6f0f;
+        box-shadow: inset 0 0 0 4px #fff;
+    }
+    .analysis-choice-other {
+        margin-top: 16px;
+        display: grid;
+        gap: 8px;
+    }
+    .analysis-choice-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 22px;
+        flex-wrap: wrap;
+    }
+    .analysis-choice-note {
+        margin-top: 12px;
+        color: #5c6471;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .analysis-choice-recommend {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+    }
+    .analysis-choice-recommend-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .analysis-choice-recommend-card {
+        padding: 16px;
+        border-radius: 20px;
+        border: 1px solid #ffd7c2;
+        background: #fff7f2;
+    }
+    .analysis-choice-recommend-card strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+    }
+    .analysis-choice-recommend-card small {
+        display: inline-flex;
+        margin-top: 8px;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: rgba(255, 111, 15, 0.12);
+        color: #b45309;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .analysis-choice-recommend-card p {
+        margin: 10px 0 0;
+        color: #5d4b42;
+        line-height: 1.6;
     }
     .analysis-loading-panel {
         position: relative;
@@ -234,6 +433,110 @@
         line-height: 1.7;
         white-space: pre-line;
     }
+    .feedback-blocks {
+        display: grid;
+        gap: 16px;
+    }
+    .feedback-block {
+        border-radius: 20px;
+        border: 1px solid #eceef2;
+        background: #fbfbfc;
+        overflow: hidden;
+    }
+    .feedback-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+    }
+    .feedback-toggle::-webkit-details-marker {
+        display: none;
+    }
+    .feedback-toggle strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.02em;
+        color: #20242b;
+    }
+    .feedback-toggle small {
+        display: block;
+        margin-top: 6px;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+    .feedback-toggle::after {
+        content: "열기";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 62px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #fff1e7;
+        color: #cc5c10;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .feedback-block[open] .feedback-toggle::after {
+        content: "닫기";
+        background: #edf3ff;
+        color: #255fcb;
+    }
+    .feedback-block-content {
+        padding: 0 20px 20px;
+        border-top: 1px solid #eceef2;
+    }
+    .feedback-section-title {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #69717f;
+        letter-spacing: -0.01em;
+    }
+    .feedback-problem {
+        margin: 0;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #fff3ec;
+        border: 1px solid #ffd9c7;
+        color: #5a3320;
+        line-height: 1.7;
+    }
+    .feedback-columns {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 14px;
+    }
+    .feedback-column {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid #eceef2;
+        background: #ffffff;
+    }
+    .feedback-column.before {
+        background: #fff8f4;
+        border-color: #ffe0cf;
+    }
+    .feedback-column.after {
+        background: #f4f8ff;
+        border-color: #dbe7ff;
+    }
+    .feedback-column h4 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+    }
+    .feedback-column p {
+        margin: 0;
+        color: #333b46;
+        line-height: 1.8;
+        white-space: pre-line;
+    }
     .analysis-list {
         margin: 0;
         padding-left: 18px;
@@ -271,8 +574,19 @@
         }
         .profile-hero,
         .profile-panel,
-        .wide-panel {
+        .wide-panel,
+        .analysis-choice-panel {
             padding: 20px;
+        }
+        .analysis-choice-grid {
+            grid-template-columns: 1fr;
+        }
+        .analysis-choice-recommend-grid {
+            grid-template-columns: 1fr;
+        }
+        .analysis-mini-grid,
+        .feedback-columns {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -286,8 +600,6 @@
         </p>
         <div class="profile-meta">
             <span class="profile-pill">학번 {{ request.user.student_id }}</span>
-            <span class="profile-pill">오늘 분석 {{ daily_analysis_count }}/{{ daily_analysis_limit }}회</span>
-            <span class="profile-pill">남은 횟수 {{ remaining_analysis_count }}회</span>
             {% if request.user.github_username %}
             <span class="profile-pill">GitHub @{{ request.user.github_username }}</span>
             {% endif %}
@@ -304,10 +616,14 @@
                 처음에는 비워두고 나중에 추가해도 됩니다. 먼저 저장해서 DB에 반영하고, 그다음 분석을 돌려 적용하는 흐름입니다.
             </p>
             <p class="profile-copy" style="margin-top:-6px;">
-                분석은 하루에 {{ daily_analysis_limit }}번까지 가능합니다. 현재 남은 횟수는 {{ remaining_analysis_count }}번입니다.
+                분석을 시작하면 최근 공고 흐름을 보고 희망 방향을 고르는 모달이 열립니다.
             </p>
             {% if has_profile_sources and not edit_mode %}
             <div class="profile-saved">
+                <div class="profile-saved-item">
+                    <strong>현재 희망 방향</strong>
+                    <p>{{ selected_job_direction|default:"아직 선택하지 않았습니다." }}</p>
+                </div>
                 <div class="profile-saved-item">
                     <strong>현재 GitHub 링크</strong>
                     <p>
@@ -330,17 +646,22 @@
                 </div>
                 <div class="profile-actions">
                     <a href="?edit=1" class="nav-link primary">수정하기</a>
-                    <button type="submit" form="profile-analyze-form" class="nav-link" data-analyze-trigger {% if remaining_analysis_count == 0 %}disabled{% endif %}>분석하여 적용하기</button>
+                    <button type="button" form="profile-analyze-form" class="nav-link" data-analyze-trigger>분석하여 적용하기</button>
                 </div>
             </div>
             <form method="post" enctype="multipart/form-data" id="profile-analyze-form" style="display:none;">
                 {% csrf_token %}
                 <input type="hidden" name="github_url" value="{{ request.user.github_url }}">
+                <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
+                <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
                 <input type="hidden" name="action" value="analyze">
             </form>
             {% else %}
             <form method="post" enctype="multipart/form-data" class="profile-form">
                 {% csrf_token %}
+                <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
+                <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
+
                 <div class="field-group">
                     <label for="{{ form.github_url.id_for_label }}">{{ form.github_url.label }}</label>
                     {{ form.github_url }}
@@ -364,7 +685,7 @@
 
                 <div class="profile-actions">
                     <button type="submit" name="action" value="save" class="nav-link profile-submit">저장하기</button>
-                    <button type="submit" name="action" value="analyze" class="nav-link primary profile-submit" data-analyze-trigger {% if remaining_analysis_count == 0 %}disabled{% endif %}>분석하여 적용하기</button>
+                    <button type="button" name="action" value="analyze" class="nav-link primary profile-submit" data-analyze-trigger>분석하여 적용하기</button>
                     {% if has_profile_sources %}
                     <a href="/users/" class="nav-link">취소</a>
                     {% endif %}
@@ -378,6 +699,11 @@
             <p class="profile-copy">
                 분석 결과는 DB에 저장해 두고, 이후 공고 적합도 계산과 추천 기능에서 재사용할 수 있게 구성했습니다.
             </p>
+            {% if selected_job_direction %}
+            <p class="profile-copy" style="margin-top:-8px;">
+                현재 분석은 <strong>{{ selected_job_direction }}</strong> 방향을 기준으로 정리되었습니다.
+            </p>
+            {% endif %}
 
             <div class="analysis-grid">
                 <article class="analysis-card">
@@ -393,17 +719,88 @@
                     {% endif %}
                 </article>
 
-                <article class="analysis-card">
-                    <h3>추천 보완 포인트</h3>
-                    {% if request.user.analysis_recommendation %}
-                    <p>{{ request.user.analysis_recommendation }}</p>
-                    {% else %}
-                    <p>GitHub 링크나 이력서를 등록하면 추천 포인트가 생성됩니다.</p>
-                    {% endif %}
-                </article>
+                {% if analysis_summary_cards %}
+                <div class="analysis-mini-grid">
+                    {% for card in analysis_summary_cards %}
+                    <article class="analysis-mini-card">
+                        <strong>{{ card.title }}</strong>
+                        <p>{{ card.body }}</p>
+                        {% if card.caption %}
+                        <small>{{ card.caption }}</small>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
         </section>
     </div>
+
+    <section class="wide-panel">
+        <h2>추천 보완 포인트</h2>
+        <p class="profile-copy">
+            이력서와 GitHub를 기준으로, 실제 이력서와 README 문장에 바로 적용할 수 있는 형태로 정리한 보완 제안입니다.
+        </p>
+        {% if recommendation_blocks %}
+        <div class="feedback-blocks">
+            {% for block in recommendation_blocks %}
+            <details class="feedback-block" {% if forloop.first %}open{% endif %}>
+                <summary class="feedback-toggle">
+                    <span>
+                        <strong>보완 포인트 {{ forloop.counter }}</strong>
+                        <small>{{ block.problem_sentence|default:"입력 문장에서 보완 대상이 확인되었습니다."|truncatechars:90 }}</small>
+                    </span>
+                </summary>
+                <div class="feedback-block-content">
+                    <p class="feedback-section-title">문제 문장</p>
+                    <p class="feedback-problem">{{ block.problem_sentence|default:"입력 문장에서 보완 대상이 확인되었습니다." }}</p>
+
+                    {% if block.problem_points %}
+                    <div class="analysis-subsection">
+                        <h4>문제점</h4>
+                        <ul class="analysis-list">
+                            {% for item in block.problem_points %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if block.improvement_points %}
+                    <div class="analysis-subsection">
+                        <h4>개선 방향</h4>
+                        <ul class="analysis-list">
+                            {% for item in block.improvement_points %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <div class="feedback-columns">
+                        <div class="feedback-column before">
+                            <h4>Before</h4>
+                            <p>{{ block.before_example|default:block.problem_sentence }}</p>
+                        </div>
+                        <div class="feedback-column after">
+                            <h4>After</h4>
+                            <p>{{ block.after_example|default:"수정 예시가 아직 생성되지 않았습니다." }}</p>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            {% endfor %}
+        </div>
+        {% elif request.user.analysis_recommendation %}
+        <article class="analysis-card">
+            <p>{{ request.user.analysis_recommendation }}</p>
+        </article>
+            {% else %}
+        <article class="analysis-card">
+            <p>GitHub 링크나 이력서를 등록하면 추천 포인트가 생성됩니다.</p>
+        </article>
+        {% endif %}
+    </section>
 
     <section class="wide-panel">
         <h2>프로젝트 및 포트폴리오 정리</h2>
@@ -490,6 +887,73 @@
     </section>
 </section>
 
+<div class="analysis-choice-modal" id="analysis-choice-modal" aria-hidden="true" data-default-choice="{{ default_direction_choice_value }}">
+    <div class="analysis-loading-backdrop"></div>
+    <div class="analysis-choice-panel" role="dialog" aria-modal="true" aria-labelledby="analysis-choice-title">
+        <div class="analysis-choice-header">
+            <div>
+                <h3 id="analysis-choice-title">최근 공고 흐름과 희망 방향 선택</h3>
+                <p>이력서와 GitHub를 기준으로 어울리는 직무를 먼저 추천하고, 최근 공고 흐름을 함께 보여줍니다. 이번 분석에서 어떤 방향으로 나아가고 싶은지 선택하십시오.</p>
+                {% if market_snapshot_summary %}
+                <p class="analysis-choice-note">{{ market_snapshot_summary }}</p>
+                {% endif %}
+            </div>
+            <button type="button" class="analysis-choice-close" id="analysis-choice-close" aria-label="닫기">×</button>
+        </div>
+
+        {% if recommended_direction_rows %}
+        <div class="analysis-choice-recommend">
+            <strong>이력서 및 GitHub 기반 추천 직무</strong>
+            <div class="analysis-choice-recommend-grid">
+                {% for row in recommended_direction_rows %}
+                <div class="analysis-choice-recommend-card">
+                    <strong>{{ row.role }}</strong>
+                    <small>{{ row.ratio }}% 공고 비율</small>
+                    <p>{{ row.reason }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="analysis-choice-note">저장된 이력서나 GitHub 분석 정보가 아직 충분하지 않으면 최근 공고 흐름 기준으로 방향을 선택할 수 있습니다.</p>
+        {% endif %}
+
+        <div class="analysis-choice-grid" id="analysis-choice-grid">
+            <label class="analysis-choice-card" data-choice-card>
+                <input type="radio" name="analysis_direction_choice" value="">
+                <strong>아직 미정</strong>
+                <small>기준 선택 없음</small>
+                <p>직무를 아직 확정하지 않았으면 현재 이력서와 GitHub 기준으로 넓게 분석합니다.</p>
+            </label>
+            {% for row in market_breakdown_rows %}
+            <label class="analysis-choice-card" data-choice-card>
+                <input type="radio" name="analysis_direction_choice" value="{{ row.role }}">
+                <strong>{{ row.role }}</strong>
+                <small>{{ row.ratio }}%</small>
+                <p>{{ row.major_skills|join:", " }}</p>
+            </label>
+            {% endfor %}
+            <label class="analysis-choice-card" data-choice-card>
+                <input type="radio" name="analysis_direction_choice" value="__other__">
+                <strong>기타</strong>
+                <small>직접 입력</small>
+                <p>목록에 없는 방향이면 직접 입력한 기준으로 분석합니다.</p>
+            </label>
+        </div>
+
+        <div class="analysis-choice-other">
+            <label for="analysis-direction-other-input">기타 희망 방향</label>
+            <input type="text" id="analysis-direction-other-input" placeholder="예: 게임 클라이언트, 보안, PM" value="{{ saved_direction_other_value }}">
+        </div>
+        <p class="analysis-choice-note">선택한 방향은 저장되며, 이후 공고 추천과 보완 포인트도 해당 기준을 반영합니다.</p>
+
+        <div class="analysis-choice-actions">
+            <button type="button" class="nav-link" id="analysis-choice-cancel">취소</button>
+            <button type="button" class="nav-link primary" id="analysis-choice-confirm">이 방향으로 분석하기</button>
+        </div>
+    </div>
+</div>
+
 <div class="analysis-loading" id="analysis-loading" aria-hidden="true">
     <div class="analysis-loading-backdrop"></div>
     <div class="analysis-loading-panel" role="status" aria-live="polite">
@@ -503,9 +967,15 @@
 <script>
     (function () {
         var analyzeButtons = document.querySelectorAll("[data-analyze-trigger]");
+        var choiceModal = document.getElementById("analysis-choice-modal");
+        var choiceClose = document.getElementById("analysis-choice-close");
+        var choiceCancel = document.getElementById("analysis-choice-cancel");
+        var choiceConfirm = document.getElementById("analysis-choice-confirm");
+        var choiceCards = document.querySelectorAll("[data-choice-card]");
+        var otherInput = document.getElementById("analysis-direction-other-input");
         var loading = document.getElementById("analysis-loading");
         var tip = document.getElementById("analysis-loading-tip");
-        if (!analyzeButtons.length || !loading || !tip) return;
+        if (!analyzeButtons.length || !loading || !tip || !choiceModal || !choiceConfirm) return;
 
         var messages = [
             "이력서 속 프로젝트를 하나씩 살펴보는 중입니다.",
@@ -516,6 +986,62 @@
             "추천 공고에 붙일 근거를 문장으로 다듬는 중입니다."
         ];
         var timerId = null;
+        var pendingForm = null;
+
+        function getSelectedChoiceInput() {
+            return document.querySelector('input[name="analysis_direction_choice"]:checked');
+        }
+
+        function syncChoiceCardState() {
+            choiceCards.forEach(function (card) {
+                var input = card.querySelector('input[name="analysis_direction_choice"]');
+                card.classList.toggle("is-selected", !!(input && input.checked));
+            });
+        }
+
+        function openChoiceModal(form) {
+            pendingForm = form;
+            choiceModal.classList.add("is-open");
+            choiceModal.setAttribute("aria-hidden", "false");
+
+            var currentChoice = form.querySelector('input[name="job_direction_choice"]');
+            var currentOther = form.querySelector('input[name="desired_job_direction_other"]');
+            var choiceValue = currentChoice ? currentChoice.value : "";
+            var otherValue = currentOther ? currentOther.value : "";
+            var selectedInput = null;
+            document.querySelectorAll('input[name="analysis_direction_choice"]').forEach(function (input) {
+                if (input.value === choiceValue) {
+                    selectedInput = input;
+                }
+            });
+            if (!selectedInput && otherValue) {
+                selectedInput = document.querySelector('input[name="analysis_direction_choice"][value="__other__"]');
+            }
+            if (!selectedInput) {
+                var defaultChoice = choiceModal.getAttribute("data-default-choice") || "";
+                document.querySelectorAll('input[name="analysis_direction_choice"]').forEach(function (input) {
+                    if (!selectedInput && input.value === defaultChoice) {
+                        selectedInput = input;
+                    }
+                });
+            }
+            if (!selectedInput) {
+                selectedInput = document.querySelector('input[name="analysis_direction_choice"][value=""]');
+            }
+            if (selectedInput) {
+                selectedInput.checked = true;
+            }
+            if (otherInput) {
+                otherInput.value = otherValue || "";
+            }
+            syncChoiceCardState();
+        }
+
+        function closeChoiceModal() {
+            pendingForm = null;
+            choiceModal.classList.remove("is-open");
+            choiceModal.setAttribute("aria-hidden", "true");
+        }
 
         function openLoading() {
             var index = 0;
@@ -533,9 +1059,57 @@
         }
 
         analyzeButtons.forEach(function (button) {
-            button.addEventListener("click", function () {
-                openLoading();
+            button.addEventListener("click", function (event) {
+                event.preventDefault();
+                var formId = button.getAttribute("form");
+                var form = formId ? document.getElementById(formId) : button.closest("form");
+                if (!form) return;
+                openChoiceModal(form);
             });
+        });
+
+        choiceCards.forEach(function (card) {
+            card.addEventListener("click", function () {
+                var input = card.querySelector('input[name="analysis_direction_choice"]');
+                if (!input) return;
+                input.checked = true;
+                syncChoiceCardState();
+            });
+        });
+
+        if (choiceClose) {
+            choiceClose.addEventListener("click", closeChoiceModal);
+        }
+        if (choiceCancel) {
+            choiceCancel.addEventListener("click", closeChoiceModal);
+        }
+
+        choiceConfirm.addEventListener("click", function () {
+            if (!pendingForm) return;
+            var formToSubmit = pendingForm;
+
+            var selectedInput = getSelectedChoiceInput();
+            var selectedValue = selectedInput ? selectedInput.value : "";
+            var otherValue = otherInput ? otherInput.value.trim() : "";
+
+            if (selectedValue === "__other__" && !otherValue) {
+                window.alert("기타 방향을 입력해 주세요.");
+                if (otherInput) otherInput.focus();
+                return;
+            }
+
+            var targetChoiceInput = formToSubmit.querySelector('input[name="job_direction_choice"]');
+            var targetOtherInput = formToSubmit.querySelector('input[name="desired_job_direction_other"]');
+            if (targetChoiceInput) {
+                targetChoiceInput.value = selectedValue;
+            }
+            if (targetOtherInput) {
+                targetOtherInput.value = selectedValue === "__other__" ? otherValue : "";
+            }
+
+            closeChoiceModal();
+            openLoading();
+            formToSubmit.submit();
         });
 
         window.addEventListener("pageshow", function () {
@@ -543,6 +1117,7 @@
                 window.clearInterval(timerId);
                 timerId = null;
             }
+            closeChoiceModal();
             loading.classList.remove("is-open");
             loading.setAttribute("aria-hidden", "true");
         });
