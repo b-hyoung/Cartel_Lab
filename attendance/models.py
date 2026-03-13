@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from datetime import time
 
 
 class AttendanceRecord(models.Model):
@@ -42,3 +43,11 @@ class LocationSetting(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.latitude}, {self.longitude})"
+
+
+class AttendanceTimeSetting(models.Model):
+    check_in_deadline = models.TimeField("지각 기준 시간", default=time(10, 0))
+    check_out_minimum = models.TimeField("조퇴 기준 시간", default=time(18, 0))
+
+    def __str__(self):
+        return f"출결 시간 설정 (지각: {self.check_in_deadline} 이후 / 조퇴: {self.check_out_minimum} 이전)"
