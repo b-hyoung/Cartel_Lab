@@ -854,9 +854,6 @@
 <section class="daily-todo-panel">
     <div class="daily-todo-head">
         <h2 class="daily-todo-title">오늘의 투두 리스트</h2>
-        {% if request.user.is_authenticated %}
-        <button type="button" class="daily-todo-open-btn" id="open-daily-todo-modal">추가</button>
-        {% endif %}
     </div>
     <p class="daily-todo-meta">{{ selected_date|date:"Y-m-d (D)" }} 할 일</p>
     {% if request.user.is_authenticated %}
@@ -895,20 +892,6 @@
         </div>
     </div>
     {% endif %}
-    <div class="daily-todo-modal" id="daily-todo-modal">
-        <div class="add-modal-header">
-            <p class="add-modal-title">하루 할 일 추가</p>
-            <button type="button" class="close-add-modal-btn" id="close-daily-todo-modal" aria-label="투두 팝업 닫기">×</button>
-        </div>
-        <form method="post" action="{% url 'planner-daily-todo-add' %}" class="daily-todo-form">
-            {% csrf_token %}
-            <input type="date" name="target_date" class="todo-date" value="{{ selected_date|date:'Y-m-d' }}" required>
-            <input type="time" name="planned_time" class="todo-time">
-            <input type="hidden" name="month" value="{{ current_month|date:'Y-m' }}">
-            <button type="submit" class="todo-submit">추가하기</button>
-            <input type="text" name="content" class="todo-content" maxlength="255" placeholder="하루 시작 전 할 일 입력" required>
-        </form>
-    </div>
     <ul class="daily-todo-list">
         {% for todo in daily_todos %}
         <li class="daily-todo-item">
@@ -1008,7 +991,7 @@
 
     <aside class="panel detail-panel">
         <div class="detail-header">
-            <h2 class="detail-title">선택한 날짜 계획</h2>
+            <h2 class="detail-title">완료된 계획</h2>
             <p class="detail-date">{{ selected_date|date:"Y-m-d (D)" }}</p>
         </div>
         <div class="detail-body">
@@ -1046,7 +1029,7 @@
                         <div class="detail-actions">
                         <form method="post" action="{% url 'planner-goal-toggle' goal.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="goal-toggle-btn {% if goal.is_completed %}is-completed{% endif %}">완료</button>
+                            <button type="submit" class="goal-toggle-btn">완료 취소</button>
                         </form>
                         </div>
                     </div>

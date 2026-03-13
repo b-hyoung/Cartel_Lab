@@ -313,10 +313,7 @@ def add_goal(request):
     if request.method != "POST":
         return redirect("planner-index")
 
-    week_start = _week_start_from_input(request.POST.get("week_start"))
-    weekday_raw = request.POST.get("weekday", "")
     content = request.POST.get("content", "").strip()
-    target_date_raw = request.POST.get("target_date")
     start_date_raw = request.POST.get("start_date")
     duration_raw = request.POST.get("duration_days", "1")
     planned_time = _time_from_input(request.POST.get("planned_time"))
@@ -324,55 +321,31 @@ def add_goal(request):
 
     duration_days = _duration_days_from_input(duration_raw, default=1)
 
-    source_date_raw = start_date_raw or target_date_raw
-    if source_date_raw:
+    if start_date_raw:
         try:
-            start_date = date.fromisoformat(source_date_raw)
+            start_date = date.fromisoformat(start_date_raw)
         except ValueError:
             start_date = None
-
-    created_goals_with_dates = []
-    sync_failed = False
 
     if content and start_date:
         for offset in range(duration_days):
             target_date = start_date + timedelta(days=offset)
-            target_week_start = _week_start_from_input(target_date.isoformat())
-            target_weekday = (target_date - target_week_start).days
-            goal = WeeklyGoal.objects.create(
+            todo, created = DailyTodo.objects.get_or_create(
                 user=request.user,
-                week_start=target_week_start,
-                weekday=target_weekday,
+                target_date=target_date,
                 planned_time=planned_time,
                 content=content,
+                defaults={"is_completed": False},
             )
-            created_goals_with_dates.append((goal, target_date))
-    elif weekday_raw.isdigit() and content:
-        weekday = int(weekday_raw)
-        if 0 <= weekday <= 6:
-            goal = WeeklyGoal.objects.create(
-                user=request.user,
-                week_start=week_start,
-                weekday=weekday,
-                planned_time=planned_time,
-                content=content,
-            )
-            created_goals_with_dates.append((goal, week_start + timedelta(days=weekday)))
+            if created and hasattr(request.user, "google_calendar_credential"):
+                try:
+                    _sync_daily_todo_create(todo)
+                except GoogleCalendarError as exc:
+                    messages.warning(request, f"투두는 생성됐지만 Google Calendar 동기화에 실패했습니다: {exc}")
 
-    if hasattr(request.user, "google_calendar_credential"):
-        for goal, goal_date in created_goals_with_dates:
-            try:
-                _sync_weekly_goal_create(goal, goal_date)
-            except GoogleCalendarError:
-                sync_failed = True
-
-    if sync_failed:
-        messages.warning(request, "일정은 생성되었지만 Google Calendar 일부 동기화에 실패했습니다.")
-
-    redirect_date_raw = start_date_raw or request.POST.get("target_date")
-    if redirect_date_raw:
+    if start_date:
         try:
-            selected_date = date.fromisoformat(redirect_date_raw)
+            selected_date = start_date
             month_key = selected_date.strftime("%Y-%m")
             return redirect(
                 f"{reverse('planner-index')}?view=plan&month={month_key}&date={selected_date.isoformat()}"
@@ -388,14 +361,27 @@ def toggle_goal(request, goal_id):
         return redirect("planner-index")
 
     goal = get_object_or_404(WeeklyGoal, id=goal_id, user=request.user)
-    goal.is_completed = not goal.is_completed
-    goal.save(update_fields=["is_completed", "updated_at"])
-
     goal_date = _goal_date(goal)
-    month_key = goal_date.strftime("%Y-%m")
-    return redirect(
-        f"{reverse('planner-index')}?view=plan&month={month_key}&date={goal_date.isoformat()}"
-    )
+
+    existing_todo = DailyTodo.objects.filter(
+        user=request.user,
+        target_date=goal_date,
+        planned_time=goal.planned_time,
+        content=goal.content,
+        is_completed=False,
+    ).exists()
+    if not existing_todo:
+        DailyTodo.objects.create(
+            user=request.user,
+            target_date=goal_date,
+            planned_time=goal.planned_time,
+            content=goal.content,
+            google_event_id=goal.google_event_id,
+            is_completed=False,
+        )
+
+    goal.delete()
+    return _planner_plan_redirect_for_date(goal_date, skip_google_sync=True)
 
 
 @login_required
