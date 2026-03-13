@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import JobPosting, JobSyncLog, JuniorRequirementStat
+from .models import JobMarketSnapshot, JobPosting, JobSyncLog, JuniorRequirementStat
 
 
 @admin.register(JobPosting)
@@ -36,4 +36,8 @@ class JuniorRequirementStatAdmin(admin.ModelAdmin):
     list_display = ("stat_date", "role", "skill", "demand_count", "demand_ratio")
     list_filter = ("stat_date", "role")
 
-# Register your models here.
+
+@admin.register(JobMarketSnapshot)
+class JobMarketSnapshotAdmin(admin.ModelAdmin):
+    list_display = ("analysis_key", "sampled_job_count", "total_jobs", "model_name", "analyzed_at")
+    readonly_fields = ("created_at", "analyzed_at")

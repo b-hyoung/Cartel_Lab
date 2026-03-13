@@ -8,8 +8,8 @@ from .models import User
 class CustomUserAdmin(UserAdmin):
     model = User
     ordering = ("student_id",)
-    list_display = ("student_id", "name", "github_username", "profile_analyzed_at", "is_staff", "is_active")
-    search_fields = ("student_id", "name", "github_username")
+    list_display = ("student_id", "name", "desired_job_direction", "github_username", "profile_analyzed_at", "is_staff", "is_active")
+    search_fields = ("student_id", "name", "desired_job_direction", "github_username")
     fieldsets = (
         (None, {"fields": ("student_id", "password")}),
         (
@@ -18,6 +18,8 @@ class CustomUserAdmin(UserAdmin):
                 "fields": (
                     "name",
                     "github_url",
+                    "desired_job_direction",
+                    "desired_job_direction_other",
                     "github_username",
                     "github_profile_summary",
                     "github_top_languages",

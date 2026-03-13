@@ -108,3 +108,22 @@ class JuniorRequirementStat(models.Model):
 
     def __str__(self):
         return f"{self.stat_date} {self.role} {self.skill} ({self.demand_count})"
+
+
+class JobMarketSnapshot(models.Model):
+    """Cached AI/heuristic market-role analysis built from recent active jobs."""
+
+    analysis_key = models.CharField(max_length=50, unique=True, default="active_jobs")
+    total_jobs = models.PositiveIntegerField(default=0)
+    sampled_job_count = models.PositiveIntegerField(default=0)
+    analysis_summary = models.TextField(blank=True, default="")
+    role_breakdown = models.JSONField(blank=True, default=list)
+    model_name = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    analyzed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-analyzed_at"]
+
+    def __str__(self):
+        return f"{self.analysis_key} ({self.sampled_job_count}/{self.total_jobs})"

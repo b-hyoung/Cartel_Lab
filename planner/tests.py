@@ -6,6 +6,7 @@ from planner.services.job_detail import (
     parse_wanted_detail_html,
     split_bullets,
 )
+from planner.services.market_analysis import build_heuristic_market_breakdown
 from planner.services.recommendation import score_job_for_user
 from planner.services.job_sync import SaraminScraper, WantedScraper
 from planner.views import build_main_task_preview
@@ -250,3 +251,42 @@ class JobRecommendationTests(TestCase):
         self.assertIsNotNone(result["score"])
         self.assertGreaterEqual(result["score"], 50)
         self.assertIn("python", result["matched_skills"])
+
+
+class JobMarketAnalysisTests(TestCase):
+    def test_build_heuristic_market_breakdown_groups_roles_and_skills(self):
+        jobs = [
+            JobPosting(
+                source="wanted",
+                external_id="1",
+                external_url="https://example.com/1",
+                title="Frontend Developer",
+                company_name="A",
+                detail_requirements="React TypeScript",
+                required_skills="React, TypeScript, HTML",
+            ),
+            JobPosting(
+                source="saramin",
+                external_id="2",
+                external_url="https://example.com/2",
+                title="Backend Engineer",
+                company_name="B",
+                detail_requirements="Python Django REST API",
+                required_skills="Python, Django, AWS",
+            ),
+            JobPosting(
+                source="saramin",
+                external_id="3",
+                external_url="https://example.com/3",
+                title="Backend API Developer",
+                company_name="C",
+                detail_requirements="Java Spring API",
+                required_skills="Java, Spring, SQL",
+            ),
+        ]
+
+        result = build_heuristic_market_breakdown(jobs)
+
+        self.assertTrue(result["role_breakdown"])
+        self.assertEqual(result["role_breakdown"][0]["role"], "Web Backend")
+        self.assertIn("Python", result["role_breakdown"][0]["major_skills"])

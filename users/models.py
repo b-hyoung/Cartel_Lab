@@ -40,6 +40,8 @@ class User(AbstractUser):
     student_id = models.CharField("학번", max_length=20, unique=True)
     name = models.CharField("이름", max_length=50)
     github_url = models.URLField("GitHub 링크", blank=True, default="")
+    desired_job_direction = models.CharField("희망 방향", max_length=120, blank=True, default="")
+    desired_job_direction_other = models.CharField("기타 희망 방향", max_length=120, blank=True, default="")
     github_username = models.CharField("GitHub 아이디", max_length=100, blank=True, default="")
     github_profile_summary = models.TextField("GitHub 분석 요약", blank=True, default="")
     github_top_languages = models.TextField("GitHub 주요 언어", blank=True, default="")
@@ -62,6 +64,9 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.student_id} {self.name}"
+
+    def get_selected_job_direction(self):
+        return self.desired_job_direction_other or self.desired_job_direction
 
     def mark_github_connected(self):
         self.github_connected_at = timezone.now()

@@ -55,14 +55,42 @@ class LoginForm(forms.Form):
 
 class ProfileUpdateForm(forms.ModelForm):
     resume_file = forms.FileField(label="이력서 파일", required=False)
+    job_direction_choice = forms.ChoiceField(
+        label="희망 방향",
+        required=False,
+        widget=forms.RadioSelect,
+    )
+    desired_job_direction_other = forms.CharField(label="기타 희망 방향", required=False, max_length=120)
 
     class Meta:
         model = User
-        fields = ["github_url", "resume_file"]
+        fields = ["github_url", "resume_file", "desired_job_direction_other"]
         labels = {
             "github_url": "GitHub 링크",
             "resume_file": "이력서 파일",
+            "desired_job_direction_other": "기타 희망 방향",
         }
+
+    def __init__(self, *args, role_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        choices = [("", "아직 선택하지 않음")]
+        choices.extend(role_choices or [])
+        choices.append(("__other__", "기타"))
+        self.fields["job_direction_choice"].choices = choices
+
+        initial_direction = ""
+        initial_other = self.instance.desired_job_direction_other if self.instance.pk else ""
+        if initial_other:
+            initial_direction = "__other__"
+        elif self.instance.pk and self.instance.desired_job_direction:
+            current_value = self.instance.desired_job_direction
+            choice_values = {value for value, _label in choices}
+            initial_direction = current_value if current_value in choice_values else "__other__"
+            if initial_direction == "__other__" and not initial_other:
+                initial_other = current_value
+
+        self.fields["job_direction_choice"].initial = initial_direction
+        self.fields["desired_job_direction_other"].initial = initial_other
 
     def clean_github_url(self):
         value = (self.cleaned_data.get("github_url") or "").strip()
@@ -79,3 +107,15 @@ class ProfileUpdateForm(forms.ModelForm):
         if not (name.endswith(".pdf") or name.endswith(".txt")):
             raise forms.ValidationError("이력서는 PDF 또는 TXT 파일만 업로드할 수 있습니다.")
         return uploaded
+
+    def clean(self):
+        cleaned_data = super().clean()
+        choice = cleaned_data.get("job_direction_choice", "")
+        other = (cleaned_data.get("desired_job_direction_other") or "").strip()
+
+        if choice == "__other__" and not other:
+            self.add_error("desired_job_direction_other", "기타 방향을 직접 입력해 주세요.")
+
+        if choice != "__other__":
+            cleaned_data["desired_job_direction_other"] = ""
+        return cleaned_data
