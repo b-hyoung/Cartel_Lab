@@ -1,8 +1,10 @@
 ﻿from django.conf import settings
 from django.db import models
 
+
 class JobPosting(models.Model):
     """Collected job posting normalized for filtering and analysis."""
+
     SOURCE_CHOICES = [
         ("saramin", "Saramin"),
         ("wanted", "Wanted"),
@@ -24,11 +26,18 @@ class JobPosting(models.Model):
     experience_max = models.PositiveSmallIntegerField(default=0)
     education_level = models.CharField(max_length=50, blank=True, default="")
 
+    # 2-year college / junior friendly indicator for filtering
     is_junior_friendly = models.BooleanField(default=False)
 
     required_skills = models.TextField(blank=True, default="")
     preferred_skills = models.TextField(blank=True, default="")
     summary_text = models.TextField(blank=True, default="")
+    detail_overview = models.TextField(blank=True, default="")
+    detail_main_tasks = models.TextField(blank=True, default="")
+    detail_requirements = models.TextField(blank=True, default="")
+    detail_preferred_points = models.TextField(blank=True, default="")
+    detail_benefits = models.TextField(blank=True, default="")
+    detail_required_skills = models.TextField(blank=True, default="")
 
     posted_at = models.DateTimeField(null=True, blank=True)
     deadline_at = models.DateTimeField(null=True, blank=True)
@@ -60,6 +69,7 @@ class JobPosting(models.Model):
 
 class JobSyncLog(models.Model):
     """Daily sync execution log."""
+
     source = models.CharField(max_length=20)
     run_at = models.DateTimeField(auto_now_add=True)
     fetched_count = models.PositiveIntegerField(default=0)
@@ -78,6 +88,7 @@ class JobSyncLog(models.Model):
 
 class JuniorRequirementStat(models.Model):
     """Daily aggregated requirement stats to analyze junior hiring trends."""
+
     stat_date = models.DateField()
     role = models.CharField(max_length=120)
     skill = models.CharField(max_length=120)
@@ -100,6 +111,23 @@ class JuniorRequirementStat(models.Model):
         return f"{self.stat_date} {self.role} {self.skill} ({self.demand_count})"
 
 
+class JobMarketSnapshot(models.Model):
+    """Cached AI/heuristic market-role analysis built from recent active jobs."""
+
+    analysis_key = models.CharField(max_length=50, unique=True, default="active_jobs")
+    total_jobs = models.PositiveIntegerField(default=0)
+    sampled_job_count = models.PositiveIntegerField(default=0)
+    analysis_summary = models.TextField(blank=True, default="")
+    role_breakdown = models.JSONField(blank=True, default=list)
+    model_name = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    analyzed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-analyzed_at"]
+
+    def __str__(self):
+        return f"{self.analysis_key} ({self.sampled_job_count}/{self.total_jobs})"
 class WeeklyGoal(models.Model):
     """Personal weekly goals for each logged-in user."""
 
