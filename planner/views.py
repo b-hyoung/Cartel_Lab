@@ -36,7 +36,6 @@ def _time_from_input(raw_time):
     except ValueError:
         return None
 
-
 def index(request):
     planner_view = request.GET.get("view", "goal")
     if planner_view not in {"goal", "plan"}:
