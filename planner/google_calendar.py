@@ -134,30 +134,35 @@ def ensure_valid_access_token(credential):
     return credential.access_token
 
 
-def _event_payload_from_todo(todo):
-    if todo.planned_time:
+def _event_payload(target_date, planned_time, summary, description):
+    if planned_time:
         current_tz = timezone.get_current_timezone()
-        start_dt = timezone.make_aware(datetime.combine(todo.target_date, todo.planned_time), current_tz)
+        start_dt = timezone.make_aware(datetime.combine(target_date, planned_time), current_tz)
         end_dt = start_dt + timedelta(hours=1)
         return {
-            "summary": todo.content,
-            "description": "Cartel Lab planner todo",
+            "summary": summary,
+            "description": description,
             "start": {"dateTime": start_dt.isoformat(), "timeZone": settings.TIME_ZONE},
             "end": {"dateTime": end_dt.isoformat(), "timeZone": settings.TIME_ZONE},
         }
 
-    end_date = todo.target_date + timedelta(days=1)
+    end_date = target_date + timedelta(days=1)
     return {
-        "summary": todo.content,
-        "description": "Cartel Lab planner todo",
-        "start": {"date": todo.target_date.isoformat()},
+        "summary": summary,
+        "description": description,
+        "start": {"date": target_date.isoformat()},
         "end": {"date": end_date.isoformat()},
     }
 
 
 def create_todo_event(credential, todo):
     access_token = ensure_valid_access_token(credential)
-    payload = _event_payload_from_todo(todo)
+    payload = _event_payload(
+        todo.target_date,
+        todo.planned_time,
+        todo.content,
+        "Cartel Lab planner todo",
+    )
     try:
         event = _authorized_request(
             GOOGLE_CALENDAR_EVENTS_URL,
@@ -167,6 +172,26 @@ def create_todo_event(credential, todo):
         )
     except (HTTPError, URLError) as exc:
         raise GoogleCalendarError("구글 캘린더 일정 생성에 실패했습니다.") from exc
+    return event.get("id", "")
+
+
+def create_goal_event(credential, goal, goal_date):
+    access_token = ensure_valid_access_token(credential)
+    payload = _event_payload(
+        goal_date,
+        goal.planned_time,
+        goal.content,
+        "Cartel Lab planner goal",
+    )
+    try:
+        event = _authorized_request(
+            GOOGLE_CALENDAR_EVENTS_URL,
+            access_token,
+            method="POST",
+            payload_dict=payload,
+        )
+    except (HTTPError, URLError) as exc:
+        raise GoogleCalendarError("구글 캘린더 목표 일정 생성에 실패했습니다.") from exc
     return event.get("id", "")
 
 

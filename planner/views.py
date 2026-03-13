@@ -11,6 +11,7 @@ from django.utils import timezone
 from .google_calendar import (
     GoogleCalendarError,
     build_authorization_url,
+    create_goal_event,
     create_todo_event,
     exchange_code_for_token,
     fetch_google_email,
@@ -49,6 +50,14 @@ def _time_from_input(raw_time):
         return None
 
 
+def _duration_days_from_input(raw_days, default=1):
+    try:
+        parsed = int(raw_days)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(1, min(parsed, 60))
+
+
 def _planner_plan_redirect_for_date(target_date, skip_google_sync=False):
     month = target_date.strftime("%Y-%m")
     skip_param = "&skip_google_sync=1" if skip_google_sync else ""
@@ -68,6 +77,20 @@ def _sync_daily_todo_create(todo):
 
     todo.google_event_id = event_id
     todo.save(update_fields=["google_event_id", "updated_at"])
+    return event_id
+
+
+def _sync_weekly_goal_create(goal, goal_date):
+    credential = getattr(goal.user, "google_calendar_credential", None)
+    if not credential:
+        return None
+
+    event_id = create_goal_event(credential, goal, goal_date)
+    if not event_id:
+        raise GoogleCalendarError("구글 캘린더에서 목표 이벤트 ID를 받지 못했습니다.")
+
+    goal.google_event_id = event_id
+    goal.save(update_fields=["google_event_id", "updated_at"])
     return event_id
 
 
@@ -220,13 +243,32 @@ def index(request):
         week_days = []
         for _ in range(7):
             day_goals = goals_by_date.get(cursor, [])
+            preview_goals = []
+            previous_day_goals = goals_by_date.get(cursor - timedelta(days=1), [])
+            next_day_goals = goals_by_date.get(cursor + timedelta(days=1), [])
+            for goal in day_goals[:2]:
+                same_prev = any(
+                    prev_goal.content == goal.content and prev_goal.planned_time == goal.planned_time
+                    for prev_goal in previous_day_goals
+                )
+                same_next = any(
+                    next_goal.content == goal.content and next_goal.planned_time == goal.planned_time
+                    for next_goal in next_day_goals
+                )
+                preview_goals.append(
+                    {
+                        "goal": goal,
+                        "continued_prev": same_prev,
+                        "continued_next": same_next,
+                    }
+                )
             week_days.append(
                 {
                     "date": cursor,
                     "is_current_month": cursor.month == current_month.month,
                     "is_selected": cursor == selected_date,
                     "is_today": cursor == today,
-                    "preview_goals": day_goals[:2],
+                    "preview_goals": preview_goals,
                     "more_count": max(len(day_goals) - 2, 0),
                 }
             )
@@ -275,31 +317,62 @@ def add_goal(request):
     weekday_raw = request.POST.get("weekday", "")
     content = request.POST.get("content", "").strip()
     target_date_raw = request.POST.get("target_date")
+    start_date_raw = request.POST.get("start_date")
+    duration_raw = request.POST.get("duration_days", "1")
     planned_time = _time_from_input(request.POST.get("planned_time"))
+    start_date = None
 
-    if target_date_raw:
+    duration_days = _duration_days_from_input(duration_raw, default=1)
+
+    source_date_raw = start_date_raw or target_date_raw
+    if source_date_raw:
         try:
-            target_date = date.fromisoformat(target_date_raw)
-            week_start = _week_start_from_input(target_date.isoformat())
-            weekday_raw = str((target_date - week_start).days)
+            start_date = date.fromisoformat(source_date_raw)
         except ValueError:
-            pass
+            start_date = None
 
-    if weekday_raw.isdigit() and content:
+    created_goals_with_dates = []
+    sync_failed = False
+
+    if content and start_date:
+        for offset in range(duration_days):
+            target_date = start_date + timedelta(days=offset)
+            target_week_start = _week_start_from_input(target_date.isoformat())
+            target_weekday = (target_date - target_week_start).days
+            goal = WeeklyGoal.objects.create(
+                user=request.user,
+                week_start=target_week_start,
+                weekday=target_weekday,
+                planned_time=planned_time,
+                content=content,
+            )
+            created_goals_with_dates.append((goal, target_date))
+    elif weekday_raw.isdigit() and content:
         weekday = int(weekday_raw)
         if 0 <= weekday <= 6:
-            WeeklyGoal.objects.create(
+            goal = WeeklyGoal.objects.create(
                 user=request.user,
                 week_start=week_start,
                 weekday=weekday,
                 planned_time=planned_time,
                 content=content,
             )
+            created_goals_with_dates.append((goal, week_start + timedelta(days=weekday)))
 
-    target_date = request.POST.get("target_date")
-    if target_date:
+    if hasattr(request.user, "google_calendar_credential"):
+        for goal, goal_date in created_goals_with_dates:
+            try:
+                _sync_weekly_goal_create(goal, goal_date)
+            except GoogleCalendarError:
+                sync_failed = True
+
+    if sync_failed:
+        messages.warning(request, "일정은 생성되었지만 Google Calendar 일부 동기화에 실패했습니다.")
+
+    redirect_date_raw = start_date_raw or request.POST.get("target_date")
+    if redirect_date_raw:
         try:
-            selected_date = date.fromisoformat(target_date)
+            selected_date = date.fromisoformat(redirect_date_raw)
             month_key = selected_date.strftime("%Y-%m")
             return redirect(
                 f"{reverse('planner-index')}?view=plan&month={month_key}&date={selected_date.isoformat()}"
@@ -333,12 +406,57 @@ def update_goal(request, goal_id):
     goal = get_object_or_404(WeeklyGoal, id=goal_id, user=request.user)
     content = request.POST.get("content", "").strip()
     planned_time = _time_from_input(request.POST.get("planned_time"))
-    if content:
-        goal.content = content
-        goal.planned_time = planned_time
-        goal.save(update_fields=["content", "planned_time", "updated_at"])
+    start_date_raw = request.POST.get("start_date", "")
+    duration_days = _duration_days_from_input(request.POST.get("duration_days", "1"), default=1)
 
     goal_date = _goal_date(goal)
+    if start_date_raw:
+        try:
+            goal_date = date.fromisoformat(start_date_raw)
+        except ValueError:
+            pass
+
+    if content:
+        first_week_start = _week_start_from_input(goal_date.isoformat())
+        first_weekday = (goal_date - first_week_start).days
+        goal.week_start = first_week_start
+        goal.weekday = first_weekday
+        goal.content = content
+        goal.planned_time = planned_time
+        goal.save(update_fields=["week_start", "weekday", "content", "planned_time", "updated_at"])
+
+        created_goals_with_dates = []
+        for offset in range(1, duration_days):
+            target_date = goal_date + timedelta(days=offset)
+            target_week_start = _week_start_from_input(target_date.isoformat())
+            target_weekday = (target_date - target_week_start).days
+            exists = WeeklyGoal.objects.filter(
+                user=request.user,
+                week_start=target_week_start,
+                weekday=target_weekday,
+                content=content,
+                planned_time=planned_time,
+            ).exists()
+            if exists:
+                continue
+
+            new_goal = WeeklyGoal.objects.create(
+                user=request.user,
+                week_start=target_week_start,
+                weekday=target_weekday,
+                planned_time=planned_time,
+                content=content,
+            )
+            created_goals_with_dates.append((new_goal, target_date))
+
+        if hasattr(request.user, "google_calendar_credential"):
+            for new_goal, target_date in created_goals_with_dates:
+                try:
+                    _sync_weekly_goal_create(new_goal, target_date)
+                except GoogleCalendarError:
+                    messages.warning(request, "수정된 기간 일정 중 일부 Google Calendar 동기화에 실패했습니다.")
+                    break
+
     month_key = goal_date.strftime("%Y-%m")
     return redirect(
         f"{reverse('planner-index')}?view=plan&month={month_key}&date={goal_date.isoformat()}"

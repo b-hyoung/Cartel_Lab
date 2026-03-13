@@ -123,6 +123,7 @@ class WeeklyGoal(models.Model):
     planned_time = models.TimeField(null=True, blank=True)
     content = models.CharField(max_length=255)
     is_completed = models.BooleanField(default=False)
+    google_event_id = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
