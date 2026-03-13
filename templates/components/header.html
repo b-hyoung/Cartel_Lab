@@ -3,7 +3,7 @@
     <div class="header-inner">
         <a href="/" class="brand">
             <img src="{% static 'users/teamlab-logo.png' %}" alt="Team Lab Logo" class="brand-logo">
-            <span>비전대학교 Lab</span>
+            <span>Jvision Lab</span>
         </a>
         <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
             <span class="bar"></span>
@@ -14,8 +14,8 @@
             {% with path=request.path %}
             <a href="/users/" class="nav-link{% if path == '/users/' %} primary{% endif %}">인원관리</a>
             <a href="/attendance/" class="nav-link{% if path|slice:':12' == '/attendance/' %} primary{% endif %}">출결관리</a>
-            <a href="/planner/" class="nav-link{% if path|slice:':9' == '/planner/' %} primary{% endif %}">목표/계획</a>
-            <a href="/jobs/" class="nav-link{% if path|slice:':6' == '/jobs/' %} primary{% endif %}">최근일자리</a>
+            <a href="/planner/?view=plan" class="nav-link{% if path|slice:':9' == '/planner/' %} primary{% endif %}">계획/목표</a>
+            <a href="/jobs/" class="nav-link{% if path|slice:':6' == '/jobs/' %} primary{% endif %}">최신일자리</a>
             <a href="/seats/" class="nav-link{% if path|slice:':7' == '/seats/' %} primary{% endif %}">좌석현황</a>
             {% if request.user.is_authenticated %}
             <a href="/users/" class="nav-link{% if path == '/users/' %} primary{% endif %}">{{ request.user.name }}</a>
@@ -39,6 +39,7 @@
             toggle.setAttribute("aria-expanded", "false");
             document.body.style.overflow = "";
         }
+
         toggle.addEventListener("click", function () {
             var open = nav.classList.toggle("is-open");
             toggle.classList.toggle("is-open", open);
