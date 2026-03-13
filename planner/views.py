@@ -8,7 +8,43 @@ from .models import JobPosting
 from .services.job_detail import fetch_job_detail
 from .services.recommendation import can_score_user, score_job_for_user
 from users.ai_services import generate_job_recommendation, is_openai_configured
+import calendar
+from datetime import date, timedelta
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+
+from .models import DailyTodo, LabWideGoal, WeeklyGoal
+
+
+def _week_start_from_input(raw_date):
+    """Return week start (Sunday) from an iso date string."""
+    if raw_date:
+        try:
+            target_date = date.fromisoformat(raw_date)
+        except ValueError:
+            target_date = timezone.localdate()
+    else:
+        target_date = timezone.localdate()
+
+    # Python weekday: Monday=0 ... Sunday=6
+    days_from_sunday = (target_date.weekday() + 1) % 7
+    return target_date - timedelta(days=days_from_sunday)
+
+
+def _goal_date(goal):
+    return goal.week_start + timedelta(days=goal.weekday)
+
+
+def _time_from_input(raw_time):
+    if not raw_time:
+        return None
+    try:
+        return timezone.datetime.strptime(raw_time, "%H:%M").time()
+    except ValueError:
+        return None
 
 def index(request):
     return render(request, "planner/index.html")
@@ -130,3 +166,218 @@ def job_detail_api(request, job_id):
         except Exception as exc:
             detail["ai_recommendation_error"] = str(exc)
     return JsonResponse(detail)
+    planner_view = request.GET.get("view", "goal")
+    if planner_view not in {"goal", "plan"}:
+        planner_view = "goal"
+
+    today = timezone.localdate()
+    month_raw = request.GET.get("month")
+    try:
+        current_month = date.fromisoformat(f"{month_raw}-01") if month_raw else today.replace(day=1)
+    except ValueError:
+        current_month = today.replace(day=1)
+
+    selected_date_raw = request.GET.get("date")
+    try:
+        selected_date = date.fromisoformat(selected_date_raw) if selected_date_raw else today
+    except ValueError:
+        selected_date = today
+
+    if selected_date.month != current_month.month or selected_date.year != current_month.year:
+        selected_date = current_month
+
+    first_weekday, _ = calendar.monthrange(current_month.year, current_month.month)
+    # monthrange: Monday=0 ... Sunday=6
+    leading_days = (first_weekday + 1) % 7
+    calendar_start = current_month - timedelta(days=leading_days)
+    calendar_end = calendar_start + timedelta(days=41)
+
+    if request.user.is_authenticated:
+        goals = WeeklyGoal.objects.filter(
+            user=request.user,
+            week_start__gte=calendar_start - timedelta(days=6),
+            week_start__lte=calendar_end,
+        ).order_by("week_start", "weekday", "created_at")
+    else:
+        goals = WeeklyGoal.objects.none()
+
+    goals_by_date = {}
+    for goal in goals:
+        goal_date = _goal_date(goal)
+        if calendar_start <= goal_date <= calendar_end:
+            goals_by_date.setdefault(goal_date, []).append(goal)
+
+    weeks = []
+    cursor = calendar_start
+    for _ in range(6):
+        week_days = []
+        for _ in range(7):
+            day_goals = goals_by_date.get(cursor, [])
+            week_days.append(
+                {
+                    "date": cursor,
+                    "is_current_month": cursor.month == current_month.month,
+                    "is_selected": cursor == selected_date,
+                    "is_today": cursor == today,
+                    "preview_goals": day_goals[:2],
+                    "more_count": max(len(day_goals) - 2, 0),
+                }
+            )
+            cursor += timedelta(days=1)
+        weeks.append(week_days)
+
+    selected_goals = goals_by_date.get(selected_date, [])
+    prev_month = (current_month.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month = (current_month.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+    context = {
+        "planner_view": planner_view,
+        "current_month": current_month,
+        "selected_date": selected_date,
+        "prev_month": prev_month,
+        "next_month": next_month,
+        "weeks": weeks,
+        "selected_goals": selected_goals,
+        "lab_wide_goals": LabWideGoal.objects.select_related("created_by")[:8],
+        "daily_todos": (
+            DailyTodo.objects.filter(user=request.user, target_date=selected_date)
+            if request.user.is_authenticated
+            else DailyTodo.objects.none()
+        ),
+    }
+    return render(request, "planner/index.html", context)
+
+
+@login_required
+def add_goal(request):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    week_start = _week_start_from_input(request.POST.get("week_start"))
+    weekday_raw = request.POST.get("weekday", "")
+    content = request.POST.get("content", "").strip()
+    target_date_raw = request.POST.get("target_date")
+    planned_time = _time_from_input(request.POST.get("planned_time"))
+
+    if target_date_raw:
+        try:
+            target_date = date.fromisoformat(target_date_raw)
+            week_start = _week_start_from_input(target_date.isoformat())
+            weekday_raw = str((target_date - week_start).days)
+        except ValueError:
+            pass
+
+    if weekday_raw.isdigit() and content:
+        weekday = int(weekday_raw)
+        if 0 <= weekday <= 6:
+            WeeklyGoal.objects.create(
+                user=request.user,
+                week_start=week_start,
+                weekday=weekday,
+                planned_time=planned_time,
+                content=content,
+            )
+
+    target_date = request.POST.get("target_date")
+    if target_date:
+        try:
+            selected_date = date.fromisoformat(target_date)
+            month_key = selected_date.strftime("%Y-%m")
+            return redirect(
+                f"{reverse('planner-index')}?view=plan&month={month_key}&date={selected_date.isoformat()}"
+            )
+        except ValueError:
+            pass
+    return redirect(f"{reverse('planner-index')}?view=plan")
+
+
+@login_required
+def toggle_goal(request, goal_id):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    goal = get_object_or_404(WeeklyGoal, id=goal_id, user=request.user)
+    goal.is_completed = not goal.is_completed
+    goal.save(update_fields=["is_completed", "updated_at"])
+
+    goal_date = _goal_date(goal)
+    month_key = goal_date.strftime("%Y-%m")
+    return redirect(
+        f"{reverse('planner-index')}?view=plan&month={month_key}&date={goal_date.isoformat()}"
+    )
+
+
+@login_required
+def update_goal(request, goal_id):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    goal = get_object_or_404(WeeklyGoal, id=goal_id, user=request.user)
+    content = request.POST.get("content", "").strip()
+    planned_time = _time_from_input(request.POST.get("planned_time"))
+    if content:
+        goal.content = content
+        goal.planned_time = planned_time
+        goal.save(update_fields=["content", "planned_time", "updated_at"])
+
+    goal_date = _goal_date(goal)
+    month_key = goal_date.strftime("%Y-%m")
+    return redirect(
+        f"{reverse('planner-index')}?view=plan&month={month_key}&date={goal_date.isoformat()}"
+    )
+
+
+@login_required
+def add_lab_goal(request):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    content = request.POST.get("content", "").strip()
+    if content:
+        LabWideGoal.objects.create(created_by=request.user, content=content)
+    return redirect(f"{reverse('planner-index')}?view=goal")
+
+
+@login_required
+def add_daily_todo(request):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    content = request.POST.get("content", "").strip()
+    planned_time = _time_from_input(request.POST.get("planned_time"))
+    target_date_raw = request.POST.get("target_date")
+    month_raw = request.POST.get("month")
+    target_date = timezone.localdate()
+    try:
+        if target_date_raw:
+            target_date = date.fromisoformat(target_date_raw)
+    except ValueError:
+        pass
+
+    if content:
+        DailyTodo.objects.create(
+            user=request.user,
+            target_date=target_date,
+            planned_time=planned_time,
+            content=content,
+        )
+
+    month = month_raw or target_date.strftime("%Y-%m")
+    return redirect(
+        f"{reverse('planner-index')}?view=plan&month={month}&date={target_date.isoformat()}"
+    )
+
+
+@login_required
+def toggle_daily_todo(request, todo_id):
+    if request.method != "POST":
+        return redirect("planner-index")
+
+    todo = get_object_or_404(DailyTodo, id=todo_id, user=request.user)
+    todo.is_completed = not todo.is_completed
+    todo.save(update_fields=["is_completed", "updated_at"])
+
+    month = todo.target_date.strftime("%Y-%m")
+    return redirect(
+        f"{reverse('planner-index')}?view=plan&month={month}&date={todo.target_date.isoformat()}"
+    )
