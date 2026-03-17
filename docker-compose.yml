@@ -13,7 +13,7 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password="]
+      test: ["CMD", "sh", "-c", "mysqladmin ping -h localhost -u root --password=\"${DB_PASSWORD:-}\""]
       interval: 10s
       timeout: 5s
       retries: 10
