@@ -17,9 +17,10 @@ else:
 print(f'DB 접속 시도: host={host}, port={port}, user={user}, db={db}', flush=True)
 try:
     pymysql.connect(host=host, user=user, password=str(password), db=db, port=int(port), connect_timeout=5)
+    print('DB 연결 성공', flush=True)
     sys.exit(0)
 except Exception as e:
-    print('DB 연결 실패:', repr(e), flush=True)
+    print('DB 연결 실패 원인:', repr(e), flush=True)
     traceback.print_exc()
     sys.exit(1)
 "; do
