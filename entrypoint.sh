@@ -3,7 +3,7 @@ set -e
 
 echo "DB 연결 대기 중..."
 until python -c "
-import pymysql, os, sys, urllib.parse as up
+import pymysql, os, sys, traceback, urllib.parse as up
 mysql_url = os.getenv('MYSQL_URL') or os.getenv('DATABASE_URL', '')
 if mysql_url:
     u = up.urlparse(mysql_url)
@@ -14,12 +14,13 @@ else:
     password = os.getenv('DB_PASSWORD') or os.getenv('MYSQL_PASSWORD', '')
     db       = os.getenv('DB_NAME')     or os.getenv('MYSQL_DATABASE', 'cartel_lab')
     port     = int(os.getenv('DB_PORT') or os.getenv('MYSQL_PORT', 3306))
-print(f'연결 시도: {user}@{host}:{port}/{db}', flush=True)
+print(f'DB 접속 시도: host={host}, port={port}, user={user}, db={db}', flush=True)
 try:
-    pymysql.connect(host=host, user=user, password=str(password), db=db, port=int(port))
+    pymysql.connect(host=host, user=user, password=str(password), db=db, port=int(port), connect_timeout=5)
     sys.exit(0)
 except Exception as e:
-    print('DB 연결 실패:', e, flush=True)
+    print('DB 연결 실패:', repr(e), flush=True)
+    traceback.print_exc()
     sys.exit(1)
 "; do
   echo "DB 준비 안됨, 2초 후 재시도..."
@@ -53,7 +54,7 @@ if [ $# -gt 0 ]; then
   exec "$@"
 else
   exec gunicorn config.wsgi:application \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:${PORT:-8000} \
     --workers 3 \
     --timeout 300 \
     --graceful-timeout 30
