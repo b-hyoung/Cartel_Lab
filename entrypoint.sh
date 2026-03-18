@@ -20,15 +20,17 @@ print('--------------------')
 
 try:
     port = int(raw_port)
-    pymysql.connect(
+    conn = pymysql.connect(
         host=host,
         user=user,
         password=password,
-        db=db,
         port=port,
         connect_timeout=5,
     )
-    print('DB 연결 성공')
+    cursor = conn.cursor()
+    cursor.execute(f'CREATE DATABASE IF NOT EXISTS \`{db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
+    conn.close()
+    print('DB 연결 성공 및 DB 확인/생성 완료')
     sys.exit(0)
 except Exception as e:
     print('DB 연결 실패 원인:', repr(e))
