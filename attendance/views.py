@@ -215,6 +215,7 @@ def set_location(request):
         lat = float(data.get("latitude"))
         lon = float(data.get("longitude"))
         name = data.get("name", "연구실")
+        radius = float(data.get("radius", 50.0))
     except (ValueError, TypeError, json.JSONDecodeError):
         return JsonResponse({"status": "error", "message": "잘못된 위치 정보입니다."}, status=400)
 
@@ -225,7 +226,7 @@ def set_location(request):
             "name": name,
             "latitude": lat,
             "longitude": lon,
-            "radius": 50.0  # 기본 반경 50m
+            "radius": radius,
         }
     )
 

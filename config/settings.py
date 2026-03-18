@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'attendance',
     'planner',
     'seats',
+    'dashboard',
 ]
 
 AUTH_USER_MODEL = 'users.User'
@@ -92,16 +93,33 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
-        'NAME': os.getenv('DB_NAME', 'cartel_lab'),
-        'USER': os.getenv('DB_USER', 'root'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-        'PORT': os.getenv('DB_PORT', '3306'),
+_mysql_url = os.getenv('MYSQL_URL') or os.getenv('DATABASE_URL', '')
+if _mysql_url:
+    import urllib.parse as _urlparse
+    _u = _urlparse.urlparse(_mysql_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': _u.path.lstrip('/'),
+            'USER': _u.username,
+            'PASSWORD': _u.password,
+            'HOST': _u.hostname,
+            'PORT': str(_u.port or 3306),
+            'OPTIONS': {'charset': 'utf8mb4'},
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
+            'NAME': os.getenv('DB_NAME') or os.getenv('MYSQL_DATABASE', 'cartel_lab'),
+            'USER': os.getenv('DB_USER') or os.getenv('MYSQL_USER', 'root'),
+            'PASSWORD': os.getenv('DB_PASSWORD') or os.getenv('MYSQL_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST') or os.getenv('MYSQL_HOST', '127.0.0.1'),
+            'PORT': os.getenv('DB_PORT') or os.getenv('MYSQL_PORT', '3306'),
+            'OPTIONS': {'charset': 'utf8mb4'},
+        }
+    }
 
 
 # Password validation
