@@ -526,14 +526,14 @@
     {% endfor %}
 </div>
 {% else %}
-<div id="jobs-loading" style="margin-top:32px; text-align:center; padding:48px 24px; border-radius:24px; background:#f8f9fc;">
-    <div style="font-size:32px; margin-bottom:16px;">⏳</div>
-    <p style="margin:0 0 6px; font-size:18px; font-weight:700; letter-spacing:-0.02em;">공고를 수집하고 있습니다</p>
-    <p style="margin:0; color:var(--muted); font-size:15px;">잠시 기다려주세요. 곧 자동으로 표시됩니다.</p>
+<div style="margin-top:32px; text-align:center; padding:56px 24px; border-radius:24px; background:#f8f9fc;">
+    <div style="font-size:36px; margin-bottom:16px;">📋</div>
+    <p style="margin:0 0 6px; font-size:20px; font-weight:700; letter-spacing:-0.02em;">아직 수집된 공고가 없습니다</p>
+    <p style="margin:0 0 24px; color:var(--muted); font-size:15px;">아래 버튼을 눌러 최신 공고를 가져오세요.</p>
+    <a href="/jobs/sync/" style="display:inline-flex;align-items:center;gap:8px;padding:13px 24px;background:var(--brand);color:#fff;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;">
+        최신 공고 가져오기
+    </a>
 </div>
-<script>
-    setTimeout(function () { location.reload(); }, 10000);
-</script>
 {% endif %}
 
 <div class="job-modal" id="job-modal" aria-hidden="true">

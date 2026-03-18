@@ -19,11 +19,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
-from planner.views import job_detail_api, jobs_index
+from planner.views import job_detail_api, jobs_index, jobs_sync
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
     path('jobs/', jobs_index, name='jobs-index'),
+    path('jobs/sync/', jobs_sync, name='jobs-sync'),
     path('jobs/<int:job_id>/detail/', job_detail_api, name='jobs-detail'),
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),

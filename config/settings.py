@@ -152,6 +152,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_PROFILE_MODEL = os.getenv("OPENAI_PROFILE_MODEL", "gpt-4.1-mini")
 OPENAI_JOB_MODEL = os.getenv("OPENAI_JOB_MODEL", "gpt-4.1-mini")
 
+# GitHub OAuth
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI", "http://localhost:8000/users/github/callback/")
+
 # Google Calendar OAuth
 GOOGLE_CALENDAR_CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID", "")
 GOOGLE_CALENDAR_CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET", "")
