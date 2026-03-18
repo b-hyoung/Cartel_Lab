@@ -138,6 +138,15 @@
                     </svg>
                 </button>
                 <div class="user-dropdown-menu" role="menu">
+                    {% if request.user.is_staff %}
+                    <a href="/auth/admin/" class="user-dropdown-item" role="menuitem">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        관리자 대시보드
+                    </a>
+                    <div class="user-dropdown-divider"></div>
+                    {% endif %}
                     <a href="/users/edit/" class="user-dropdown-item" role="menuitem">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

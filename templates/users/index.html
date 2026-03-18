@@ -678,7 +678,7 @@
         <span class="hero-kicker">학생 프로필</span>
         <h1>{{ request.user.name }}님의 분석 프로필</h1>
         <p>
-            학번 기반 계정은 그대로 유지하고, GitHub 링크와 이력서를 추가로 등록해 공고 적합도 분석에 쓸 기초 데이터를 쌓는 화면입니다.
+            GitHub 연동과 이력서를 등록하면 나에게 맞는 공고를 추천받을 수 있습니다.
         </p>
         <div class="profile-meta">
             <span class="profile-pill">학번 {{ request.user.student_id }}</span>
@@ -691,31 +691,46 @@
         </div>
     </div>
 
+    {% if has_profile_sources and not edit_mode %}
+    {# 저장된 상태: 좌 = GitHub, 우 = 이력서 #}
+    <form method="post" enctype="multipart/form-data" id="profile-analyze-form" style="display:none;">
+        {% csrf_token %}
+        <input type="hidden" name="github_url" value="{{ request.user.github_url }}">
+        <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
+        <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
+        <input type="hidden" name="action" value="analyze">
+    </form>
     <div class="profile-grid">
         <section class="profile-panel">
-            <h2>GitHub 연동 및 이력서 등록</h2>
-            <p class="profile-copy">
-                처음에는 비워두고 나중에 추가해도 됩니다. 먼저 저장해서 DB에 반영하고, 그다음 분석을 돌려 적용하는 흐름입니다.
-            </p>
-            <p class="profile-copy" style="margin-top:-6px;">
-                분석을 시작하면 최근 공고 흐름을 보고 희망 방향을 고르는 모달이 열립니다.
-            </p>
-            {% if has_profile_sources and not edit_mode %}
+            <h2>GitHub 연동</h2>
             <div class="profile-saved">
                 <div class="profile-saved-item">
                     <strong>현재 희망 방향</strong>
                     <p>{{ selected_job_direction|default:"아직 선택하지 않았습니다." }}</p>
                 </div>
                 <div class="profile-saved-item">
-                    <strong>현재 GitHub 링크</strong>
+                    <strong>연동된 계정</strong>
                     <p>
-                        {% if request.user.github_url %}
-                        <a href="{{ request.user.github_url }}" target="_blank" rel="noopener noreferrer">{{ request.user.github_url }}</a>
+                        {% if request.user.github_username %}
+                        <a href="https://github.com/{{ request.user.github_username }}" target="_blank" rel="noopener noreferrer">@{{ request.user.github_username }}</a>
+                        &nbsp;<a href="/users/github/disconnect/" style="font-size:12px;color:#c2410c;">연동 해제</a>
                         {% else %}
-                        아직 등록되지 않았습니다.
+                        <a href="/users/github/connect/" class="github-connect-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                            GitHub 연동하기
+                        </a>
                         {% endif %}
                     </p>
                 </div>
+                <div class="profile-actions">
+                    <a href="?edit=1" class="nav-link primary">수정하기</a>
+                    <button type="button" form="profile-analyze-form" class="nav-link" data-analyze-trigger>분석하여 적용하기</button>
+                </div>
+            </div>
+        </section>
+        <section class="profile-panel">
+            <h2>이력서 등록</h2>
+            <div class="profile-saved">
                 <div class="profile-saved-item">
                     <strong>현재 이력서 파일</strong>
                     <p>
@@ -726,35 +741,45 @@
                         {% endif %}
                     </p>
                 </div>
-                <div class="profile-actions">
-                    <a href="?edit=1" class="nav-link primary">수정하기</a>
-                    <button type="button" form="profile-analyze-form" class="nav-link" data-analyze-trigger>분석하여 적용하기</button>
-                </div>
             </div>
-            <form method="post" enctype="multipart/form-data" id="profile-analyze-form" style="display:none;">
-                {% csrf_token %}
-                <input type="hidden" name="github_url" value="{{ request.user.github_url }}">
-                <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
-                <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
-                <input type="hidden" name="action" value="analyze">
-            </form>
-            {% else %}
-            <form method="post" enctype="multipart/form-data" class="profile-form">
-                {% csrf_token %}
-                <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
-                <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
-
+        </section>
+    </div>
+    {% else %}
+    {# 편집 모드: 좌 = GitHub 연동, 우 = 이력서 업로드 #}
+    <form method="post" enctype="multipart/form-data" class="profile-form" id="profile-edit-form">
+        {% csrf_token %}
+        <input type="hidden" name="job_direction_choice" value="{{ saved_direction_choice_value }}">
+        <input type="hidden" name="desired_job_direction_other" value="{{ saved_direction_other_value }}">
+        <div class="profile-grid">
+            <section class="profile-panel">
+                <h2>GitHub 연동</h2>
+                <p class="profile-copy">GitHub를 연동하면 프로젝트 기반으로 맞춤 분석을 받을 수 있습니다.</p>
                 <div class="field-group">
-                    <label for="{{ form.github_url.id_for_label }}">{{ form.github_url.label }}</label>
-                    {{ form.github_url }}
-                    <div class="field-help">예시: `https://github.com/username`</div>
-                    {% if form.github_url.errors %}
-                    <div class="field-errors">{{ form.github_url.errors|striptags }}</div>
+                    {% if request.user.github_username %}
+                    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e5e9;border-radius:12px;background:#f9f9fb;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#333"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                        <span style="font-weight:600;">@{{ request.user.github_username }}</span>
+                        <a href="/users/github/disconnect/" style="margin-left:auto;font-size:13px;color:#c2410c;">연동 해제</a>
+                    </div>
+                    {% else %}
+                    <a href="/users/github/connect/" class="github-connect-btn" style="display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:1px solid #e2e5e9;border-radius:12px;background:#fff;color:#333;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                        GitHub 연동하기
+                    </a>
                     {% endif %}
                 </div>
-
+                <div class="profile-actions" style="margin-top:auto;padding-top:20px;">
+                    <button type="submit" name="action" value="save" class="nav-link profile-submit">저장하기</button>
+                    <button type="button" name="action" value="analyze" class="nav-link primary profile-submit" data-analyze-trigger>분석하여 적용하기</button>
+                    {% if has_profile_sources %}
+                    <a href="/users/" class="nav-link">취소</a>
+                    {% endif %}
+                </div>
+            </section>
+            <section class="profile-panel">
+                <h2>이력서 등록</h2>
+                <p class="profile-copy">PDF 또는 TXT 형식의 이력서를 업로드해주세요.</p>
                 <div class="field-group">
-                    <label>{{ form.resume_file.label }}</label>
                     <div class="file-drop-zone" id="fileDropZone">
                         <input type="file" name="resume_file" id="{{ form.resume_file.id_for_label }}" accept=".pdf,.txt" class="file-drop-input">
                         <div class="file-drop-idle" id="fileDropIdle">
@@ -786,22 +811,17 @@
                     <div class="field-errors">{{ form.resume_file.errors|striptags }}</div>
                     {% endif %}
                 </div>
+            </section>
+        </div>
+    </form>
+    {% endif %}
 
-                <div class="profile-actions">
-                    <button type="submit" name="action" value="save" class="nav-link profile-submit">저장하기</button>
-                    <button type="button" name="action" value="analyze" class="nav-link primary profile-submit" data-analyze-trigger>분석하여 적용하기</button>
-                    {% if has_profile_sources %}
-                    <a href="/users/" class="nav-link">취소</a>
-                    {% endif %}
-                </div>
-            </form>
-            {% endif %}
-        </section>
-
+    {% if request.user.profile_analyzed_at %}
+    <div class="profile-grid">
         <section class="profile-panel">
             <h2>저장된 분석 결과</h2>
             <p class="profile-copy">
-                분석 결과는 DB에 저장해 두고, 이후 공고 적합도 계산과 추천 기능에서 재사용할 수 있게 구성했습니다.
+                분석 결과를 바탕으로 나에게 맞는 공고와 보완할 점을 확인할 수 있습니다.
             </p>
             {% if selected_job_direction %}
             <p class="profile-copy" style="margin-top:-8px;">
@@ -843,7 +863,7 @@
     <section class="wide-panel">
         <h2>추천 보완 포인트</h2>
         <p class="profile-copy">
-            이력서와 GitHub를 기준으로, 실제 이력서와 README 문장에 바로 적용할 수 있는 형태로 정리한 보완 제안입니다.
+            부족한 부분과 채워나갈 방향을 확인해보세요.
         </p>
         {% if recommendation_blocks %}
         <div class="feedback-blocks">
@@ -909,7 +929,7 @@
     <section class="wide-panel">
         <h2>프로젝트 및 포트폴리오 정리</h2>
         <p class="profile-copy">
-            이력서와 GitHub에서 추출한 프로젝트 관련 정보는 아래에 모아 정리했습니다.
+            등록한 이력서와 GitHub 기반으로 프로젝트 정보를 정리했습니다.
         </p>
         <div class="analysis-grid">
             <article class="analysis-card">
@@ -989,6 +1009,7 @@
             </article>
         </div>
     </section>
+    {% endif %}
 </section>
 
 <div class="analysis-choice-modal" id="analysis-choice-modal" aria-hidden="true" data-default-choice="{{ default_direction_choice_value }}">
@@ -997,7 +1018,7 @@
         <div class="analysis-choice-header">
             <div>
                 <h3 id="analysis-choice-title">최근 공고 흐름과 희망 방향 선택</h3>
-                <p>이력서와 GitHub를 기준으로 어울리는 직무를 먼저 추천하고, 최근 공고 흐름을 함께 보여줍니다. 이번 분석에서 어떤 방향으로 나아가고 싶은지 선택하십시오.</p>
+                <p>어떤 방향으로 분석할지 선택해주세요.</p>
                 {% if market_snapshot_summary %}
                 <p class="analysis-choice-note">{{ market_snapshot_summary }}</p>
                 {% endif %}
@@ -1019,7 +1040,7 @@
             </div>
         </div>
         {% else %}
-        <p class="analysis-choice-note">저장된 이력서나 GitHub 분석 정보가 아직 충분하지 않으면 최근 공고 흐름 기준으로 방향을 선택할 수 있습니다.</p>
+        <p class="analysis-choice-note">GitHub 연동이나 이력서를 먼저 등록하면 더 정확한 추천을 받을 수 있습니다.</p>
         {% endif %}
 
         <div class="analysis-choice-grid" id="analysis-choice-grid">

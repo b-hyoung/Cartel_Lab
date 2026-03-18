@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render
 
 from .forms import BasicInfoForm, LoginForm, ProfileUpdateForm, SignupForm
 from .services import build_profile_analysis
+from planner.models import JobMarketSnapshot
 from planner.services.market_analysis import (
     get_direction_choices,
     get_market_role_context,
@@ -225,9 +226,9 @@ def reset_profile_analysis(user):
 @login_required
 def index(request):
     user = request.user
-    market_snapshot = get_or_refresh_market_snapshot()
+    market_snapshot = JobMarketSnapshot.objects.filter(analysis_key="active_jobs").first()
     role_choices = get_direction_choices(market_snapshot)
-    has_profile_sources = bool(user.github_url or user.resume_file)
+    has_profile_sources = bool(user.github_username or user.resume_file)
     original_direction = user.desired_job_direction
     original_direction_other = user.desired_job_direction_other
 
@@ -244,7 +245,7 @@ def index(request):
             else:
                 user.desired_job_direction = selected_choice
                 user.desired_job_direction_other = ""
-            source_fields = {"github_url", "resume_file"}
+            source_fields = {"resume_file"}
             direction_changed = (
                 original_direction != user.desired_job_direction
                 or original_direction_other != user.desired_job_direction_other
@@ -333,6 +334,82 @@ def index(request):
         "market_breakdown_rows": market_snapshot.role_breakdown if market_snapshot else [],
     }
     return render(request, "users/index.html", context)
+
+@login_required
+def github_connect(request):
+    from django.conf import settings as django_settings
+    import urllib.parse
+    params = urllib.parse.urlencode({
+        "client_id": django_settings.GITHUB_CLIENT_ID,
+        "redirect_uri": django_settings.GITHUB_REDIRECT_URI,
+        "scope": "read:user",
+    })
+    return redirect(f"https://github.com/login/oauth/authorize?{params}")
+
+
+@login_required
+def github_callback(request):
+    import requests as req
+    from requests.exceptions import RequestException
+    from django.conf import settings as django_settings
+
+    code = request.GET.get("code")
+    if not code:
+        messages.error(request, "GitHub 연동에 실패했습니다.")
+        return redirect("users-index")
+
+    try:
+        # code → access token
+        token_resp = req.post(
+            "https://github.com/login/oauth/access_token",
+            json={
+                "client_id": django_settings.GITHUB_CLIENT_ID,
+                "client_secret": django_settings.GITHUB_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": django_settings.GITHUB_REDIRECT_URI,
+            },
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        access_token = token_resp.json().get("access_token")
+        if not access_token:
+            messages.error(request, "GitHub 인증 코드가 만료되었습니다. 다시 시도해 주세요.")
+            return redirect("users-index")
+
+        # username 가져오기
+        user_resp = req.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+        username = user_resp.json().get("login")
+        if not username:
+            messages.error(request, "GitHub 사용자 정보를 가져오지 못했습니다.")
+            return redirect("users-index")
+
+    except RequestException:
+        messages.error(request, "GitHub 서버와 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.")
+        return redirect("users-index")
+
+    request.user.github_username = username
+    request.user.github_url = f"https://github.com/{username}"
+    request.user.mark_github_connected()
+    request.user.save()
+    messages.success(request, f"GitHub @{username} 연동이 완료되었습니다.")
+    return redirect("users-index")
+
+
+@login_required
+def github_disconnect(request):
+    request.user.github_username = ""
+    request.user.github_url = ""
+    request.user.github_connected_at = None
+    request.user.github_profile_summary = ""
+    request.user.github_top_languages = ""
+    request.user.save()
+    messages.success(request, "GitHub 연동이 해제되었습니다.")
+    return redirect("users-index")
+
 
 @login_required
 def edit_basic_info(request):

@@ -845,6 +845,23 @@ def jobs_index(request):
     return render(request, "jobs/index.html", {"jobs": jobs, "scoring_enabled": scoring_enabled})
 
 
+def jobs_sync(request):
+    from django.contrib.auth.decorators import login_required
+    from django.core.management import call_command
+    import threading
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect('/users/login/')
+    def run_sync():
+        try:
+            call_command('sync_job_sources')
+        except Exception:
+            pass
+    threading.Thread(target=run_sync, daemon=True).start()
+    messages.success(request, "공고 수집을 시작했습니다. 잠시 후 새로고침하면 표시됩니다.")
+    return redirect('jobs-index')
+
+
 def job_detail_api(request, job_id):
     job = get_object_or_404(JobPosting, pk=job_id, is_active=True)
     detail = fetch_job_detail(job)

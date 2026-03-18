@@ -87,9 +87,8 @@ class ProfileUpdateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["github_url", "resume_file", "desired_job_direction_other"]
+        fields = ["resume_file", "desired_job_direction_other"]
         labels = {
-            "github_url": "GitHub 링크",
             "resume_file": "이력서 파일",
             "desired_job_direction_other": "기타 희망 방향",
         }
@@ -114,12 +113,6 @@ class ProfileUpdateForm(forms.ModelForm):
 
         self.fields["job_direction_choice"].initial = initial_direction
         self.fields["desired_job_direction_other"].initial = initial_other
-
-    def clean_github_url(self):
-        value = (self.cleaned_data.get("github_url") or "").strip()
-        if value and "github.com" not in value:
-            raise forms.ValidationError("GitHub 프로필 링크를 입력해 주세요.")
-        return value
 
     def clean_resume_file(self):
         uploaded = self.cleaned_data.get("resume_file")
