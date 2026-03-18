@@ -4,11 +4,11 @@ set -e
 echo "DB 연결 대기 중..."
 until python -c "
 import pymysql, os, sys, traceback
-host = os.getenv('DB_HOST', 'db')
-user = os.getenv('DB_USER', 'django')
-password = os.getenv('DB_PASSWORD', '')
-db = os.getenv('DB_NAME', 'cartel_lab')
-raw_port = os.getenv('DB_PORT', '3306')
+host = os.getenv('DB_HOST') or os.getenv('MYSQL_HOST', 'db')
+user = os.getenv('DB_USER') or os.getenv('MYSQL_USER', 'root')
+password = os.getenv('DB_PASSWORD') or os.getenv('MYSQL_PASSWORD', '')
+db = os.getenv('DB_NAME') or os.getenv('MYSQL_DATABASE', 'cartel_lab')
+raw_port = os.getenv('DB_PORT') or os.getenv('MYSQL_PORT') or '3306'
 
 print('DB_HOST=', host)
 print('DB_USER=', user)
