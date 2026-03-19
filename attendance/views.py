@@ -87,6 +87,7 @@ def attendance_list(request):
     """
     today = timezone.localdate()
     qs = AttendanceRecord.objects.filter(attendance_date=today)\
+        .select_related('user')\
         .exclude(user__is_staff=True)\
         .exclude(user__is_superuser=True)\
         .order_by("-check_in_at")
