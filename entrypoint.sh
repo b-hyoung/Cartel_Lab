@@ -52,11 +52,13 @@ from users.models import User
 sid = os.environ.get('ADMIN_ID', '')
 pw  = os.environ.get('ADMIN_PASSWORD', '')
 if sid and pw:
-    if not User.objects.filter(student_id=sid).exists():
-        User.objects.create_superuser(student_id=sid, password=pw, name=os.environ.get('ADMIN_NAME', '관리자'))
-        print('관리자 계정 생성됨:', sid)
-    else:
-        print('관리자 계정 이미 존재:', sid)
+    user, created = User.objects.get_or_create(student_id=sid, defaults={'name': os.environ.get('ADMIN_NAME', '관리자')})
+    if created:
+        user.set_password(pw)
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+    print('관리자 계정 생성됨:' if created else '관리자 권한 업데이트:', sid)
 else:
     print('ADMIN_ID / ADMIN_PASSWORD 미설정, 건너뜀')
 "
