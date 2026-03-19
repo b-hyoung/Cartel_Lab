@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}기술 블로그 - Team Lab{% endblock %}
+
+{% block content %}
+<style>
+    .blog-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+    .blog-header {
+        margin-bottom: 60px;
+        text-align: center;
+    }
+    .blog-header h1 {
+        font-size: 48px;
+        font-weight: 850;
+        letter-spacing: -0.04em;
+        margin-bottom: 16px;
+    }
+    .blog-header p {
+        color: var(--muted);
+        font-size: 18px;
+    }
+    .post-list {
+        display: grid;
+        gap: 40px;
+    }
+    .post-item {
+        display: flex;
+        gap: 30px;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s ease;
+        padding: 20px;
+        border-radius: 20px;
+    }
+    .post-item:hover {
+        background: #f9fafb;
+        transform: translateY(-4px);
+    }
+    .post-thumbnail {
+        width: 240px;
+        height: 160px;
+        border-radius: 14px;
+        object-fit: cover;
+        background: #eee;
+        flex-shrink: 0;
+    }
+    .post-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .post-info h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        line-height: 1.3;
+    }
+    .post-info p {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .post-meta {
+        font-size: 14px;
+        color: #adb5bd;
+    }
+    .write-btn-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 30px;
+    }
+    @media (max-width: 768px) {
+        .post-item {
+            flex-direction: column;
+        }
+        .post-thumbnail {
+            width: 100%;
+            height: 200px;
+        }
+    }
+</style>
+
+<div class="blog-container">
+    <div class="blog-header">
+        <h1>Team Lab Tech</h1>
+        <p>우리들의 기술적인 고민과 성장 기록을 공유합니다.</p>
+    </div>
+
+    {% if user.is_authenticated %}
+    <div class="write-btn-container">
+        <a href="{% url 'blog:post-create' %}" class="btn btn-primary">글쓰기</a>
+    </div>
+    {% endif %}
+
+    <div class="post-list">
+        {% for post in posts %}
+        <a href="{{ post.get_absolute_url }}" class="post-item">
+            {% if post.thumbnail %}
+                <img src="{{ post.thumbnail.url }}" alt="{{ post.title }}" class="post-thumbnail">
+            {% else %}
+                <div class="post-thumbnail" style="background: linear-gradient(135deg, #ff6f0f 0%, #ff9d5c 100%);"></div>
+            {% endif %}
+            <div class="post-info">
+                <h2>{{ post.title }}</h2>
+                <p>{{ post.summary }}</p>
+                <div class="post-meta">
+                    {{ post.author.name }} · {{ post.created_at|date:"Y년 m월 d일" }}
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <p style="text-align: center; color: var(--muted); padding: 100px 0;">아직 등록된 포스트가 없습니다.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

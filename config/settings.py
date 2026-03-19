@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'planner',
     'seats',
     'dashboard',
+    'blog',
 ]
 
 AUTH_USER_MODEL = 'users.User'

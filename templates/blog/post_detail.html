@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ post.title }} - Team Lab Tech{% endblock %}
+
+{% block content %}
+<!-- Markdown & Syntax Highlighting -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+<style>
+    .post-container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 60px 20px;
+    }
+    .post-header {
+        margin-bottom: 40px;
+        text-align: center;
+    }
+    .post-header h1 {
+        font-size: 40px;
+        font-weight: 850;
+        margin-bottom: 24px;
+        line-height: 1.2;
+    }
+    .post-header-meta {
+        color: var(--muted);
+        font-size: 16px;
+    }
+    .post-thumbnail-large {
+        width: 100%;
+        max-height: 450px;
+        object-fit: cover;
+        border-radius: 24px;
+        margin-bottom: 50px;
+    }
+    /* Markdown Styles */
+    .post-content {
+        font-size: 18px;
+        line-height: 1.8;
+        color: #333;
+    }
+    .post-content h2 { font-size: 30px; font-weight: 700; margin: 40px 0 20px; }
+    .post-content h3 { font-size: 24px; font-weight: 700; margin: 30px 0 15px; }
+    .post-content p { margin-bottom: 24px; }
+    .post-content img { max-width: 100%; border-radius: 12px; margin: 20px 0; }
+    .post-content pre { 
+        background: #2d2d2d; 
+        padding: 20px; 
+        border-radius: 12px; 
+        overflow-x: auto; 
+        margin: 24px 0;
+    }
+    .post-content blockquote {
+        border-left: 4px solid var(--brand);
+        padding-left: 20px;
+        color: var(--muted);
+        font-style: italic;
+        margin: 30px 0;
+    }
+</style>
+
+<article class="post-container">
+    <header class="post-header">
+        <div class="hero-kicker">TECHNICAL POST</div>
+        <h1>{{ post.title }}</h1>
+        <div class="post-header-meta">
+            {{ post.author.name }} · {{ post.created_at|date:"Y년 m월 d일" }}
+            {% if user == post.author or user.is_staff %}
+            · <a href="{% url 'blog:post-update' post.slug %}" style="color: var(--brand); text-decoration: none; font-weight: 700;">수정하기</a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if post.thumbnail %}
+        <img src="{{ post.thumbnail.url }}" alt="{{ post.title }}" class="post-thumbnail-large">
+    {% endif %}
+
+    <div id="markdown-content" class="post-content">
+        {{ post.content|safe }}
+    </div>
+</article>
+
+<script>
+    // 마크다운 렌더링
+    const contentDiv = document.getElementById('markdown-content');
+    const rawContent = `{{ post.content|escapejs }}`;
+    contentDiv.innerHTML = marked.parse(rawContent);
+    
+    // 코드 하이라이팅 적용
+    Prism.highlightAll();
+</script>
+{% endblock %}

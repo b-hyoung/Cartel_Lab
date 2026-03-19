@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}포스트 수정{% else %}새 글 작성{% endif %} - Team Lab Tech{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+    .form-header { margin-bottom: 30px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 700; margin-bottom: 8px; }
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font-size: 16px;
+    }
+    textarea.form-control { min-height: 400px; font-family: monospace; }
+    .help-text { font-size: 13px; color: var(--muted); margin-top: 5px; }
+    .current-file { font-size: 13px; margin-top: 5px; color: var(--brand); }
+</style>
+
+<div class="form-container">
+    <div class="form-header">
+        <h1>{% if object %}기술 포스트 수정{% else %}새로운 기술 포스트 작성{% endif %}</h1>
+        <p>{% if object %}기존 내용을 다듬고 지식을 업데이트해 주세요.{% else %}마크다운 형식을 사용하여 지식을 공유해 주세요.{% endif %}</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_title">제목</label>
+            <input type="text" name="title" id="id_title" class="form-control" 
+                   value="{{ form.title.value|default:'' }}" placeholder="제목을 입력하세요" required>
+        </div>
+        <div class="form-group">
+            <label for="id_slug">슬러그 (URL 주소)</label>
+            <input type="text" name="slug" id="id_slug" class="form-control" 
+                   value="{{ form.slug.value|default:'' }}" placeholder="my-awesome-post" required>
+            <p class="help-text">영문, 숫자, 하이픈(-)만 사용하여 고유한 주소를 만드세요.</p>
+        </div>
+        <div class="form-group">
+            <label for="id_summary">요약</label>
+            <textarea name="summary" id="id_summary" class="form-control" rows="3" 
+                      placeholder="포스트 내용을 짧게 요약해 주세요">{{ form.summary.value|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="id_content">내용 (Markdown)</label>
+            <textarea name="content" id="id_content" class="form-control" 
+                      placeholder="마크다운으로 내용을 작성하세요" required>{{ form.content.value|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="id_thumbnail">대표 이미지</label>
+            <input type="file" name="thumbnail" id="id_thumbnail" class="form-control">
+            {% if object.thumbnail %}
+                <p class="current-file">현재 파일: {{ object.thumbnail.name }}</p>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 40px; display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-primary">{% if object %}수정 완료{% else %}포스트 등록{% endif %}</button>
+            <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'blog:post-list' %}{% endif %}" class="btn btn-secondary">취소</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 제목 입력 시 슬러그 자동 생성 로직
+    const titleInput = document.getElementById('id_title');
+    const slugInput = document.getElementById('id_slug');
+    const isEditMode = {% if object %}true{% else %}false{% endif %};
+    
+    // 수정 모드일 때는 슬러그 자동 생성을 꺼둡니다 (기존 URL 유지 목적)
+    if (!isEditMode) {
+        titleInput.addEventListener('input', function() {
+            if (!slugInput.value || slugInput.dataset.auto === 'true') {
+                slugInput.value = this.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9가-힣\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .slice(0, 50);
+                slugInput.dataset.auto = 'true';
+            }
+        });
+    }
+</script>
+{% endblock %}
