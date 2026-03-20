@@ -32,6 +32,7 @@ urlpatterns = [
     path('attendance/', include('attendance.urls')),
     path('planner/', include('planner.urls')),
     path('seats/', include('seats.urls')),
+    path('blog/', include('blog.urls')),
 ]
 
 if settings.DEBUG:
