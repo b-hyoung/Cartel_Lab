@@ -7,16 +7,26 @@
     margin: 0 auto;
     padding: 0 20px;
 }
+
+@media (max-width: 992px) {
+    .attendance-dashboard {
+        flex-direction: column;
+        padding: 0 10px;
+    }
+}
+
 .dashboard-left {
     flex: 2;
     display: flex;
     flex-direction: column;
     gap: 24px;
     min-width: 0;
+    width: 100%;
 }
 .dashboard-right {
     flex: 1;
     min-width: 0;
+    width: 100%;
 }
 
 .my-attendance-card, .recent-attendance-card, .others-attendance-card {
@@ -25,6 +35,12 @@
     padding: 24px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     width: 100%;
+}
+
+@media (max-width: 576px) {
+    .my-attendance-card, .recent-attendance-card, .others-attendance-card {
+        padding: 16px;
+    }
 }
 
 .my-name {
@@ -53,6 +69,14 @@
     padding: 10px 30px;
     border-radius: 12px;
 }
+
+@media (max-width: 576px) {
+    .status-large {
+        font-size: 24px;
+        padding: 8px 20px;
+    }
+}
+
 .status-absent { background: #f1f3f5; color: #868e96; }
 .status-present { background: #e6fcf5; color: #0ca678; }
 .status-late { background: #fff9db; color: #f08c00; }
@@ -64,6 +88,13 @@
     gap: 40px;
     margin-bottom: 30px;
 }
+
+@media (max-width: 576px) {
+    .my-time-info {
+        gap: 20px;
+    }
+}
+
 .time-block {
     text-align: center;
 }
@@ -93,13 +124,14 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden; /* 모바일에서 삐져나오는 것 방지 */
 }
 
 .heatmap-months {
     display: flex;
-    margin-left: 28px;
+    margin-left: 28px; /* 20px(days width) + 8px(gap) = 28px */
     margin-bottom: 5px;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--muted);
     position: relative;
     height: 15px;
@@ -107,6 +139,7 @@
 
 .month-label {
     position: absolute;
+    white-space: nowrap;
 }
 
 .heatmap-body {
@@ -120,8 +153,9 @@
     gap: 2px;
     font-size: 10px;
     color: var(--muted);
-    width: 15px;
+    width: 20px; /* 15px에서 20px로 증가 */
     text-align: left;
+    flex-shrink: 0;
 }
 
 .heatmap-days span {
@@ -136,6 +170,16 @@
     overflow-x: auto;
     padding-bottom: 8px;
     flex-grow: 1;
+    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+}
+
+/* 스크롤바 스타일링 (선택사항) */
+.heatmap-container::-webkit-scrollbar {
+    height: 4px;
+}
+.heatmap-container::-webkit-scrollbar-thumb {
+    background: #e0e0e0;
+    border-radius: 2px;
 }
 
 .heatmap-week {
@@ -157,9 +201,10 @@
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    margin-top: 8px;
-    font-size: 12px;
+    margin-top: 12px;
+    font-size: 11px;
     color: var(--muted);
+    flex-wrap: wrap;
 }
 
 .status-present-color { background-color: #40c463; }
