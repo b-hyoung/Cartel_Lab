@@ -109,19 +109,29 @@ document.addEventListener("DOMContentLoaded", function() {
         initHeatmap(heatmapRawData);
     }
 
+    // URL 파라미터 확인 (QR 코드 접속 여부)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isQR = urlParams.get('qr') === 'true';
+
     // Event Handlers
     const checkInBtn = document.getElementById('checkInBtn');
     if (checkInBtn) {
         checkInBtn.addEventListener('click', function() {
-            handleAttendanceAction(this, checkInUrl, '출석체크 하기', '위치 확인 중...');
+            handleCheckInAction(this, checkInUrl, '출석체크 하기', '위치 확인 중...');
         });
+
+        // QR 코드로 접속했고 아직 출석 전이라면 자동 출석 트리거
+        if (isQR) {
+            console.log("QR 접속 감지: 자동 출석을 시도합니다.");
+            handleCheckInAction(checkInBtn, checkInUrl, '출석체크 하기', '자동 출석 시도 중...');
+        }
     }
 
     const checkOutBtn = document.getElementById('checkOutBtn');
     if (checkOutBtn) {
         checkOutBtn.addEventListener('click', function() {
             if (confirm('퇴실 처리를 하시겠습니까?')) {
-                handleAttendanceAction(this, checkOutUrl, '퇴실하기', '위치 확인 중...');
+                handleCheckOutAction(this, checkOutUrl, '퇴실하기', '처리 중...');
             }
         });
     }
@@ -143,7 +153,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-function handleAttendanceAction(btn, url, originalText, loadingText) {
+function handleCheckInAction(btn, url, originalText, loadingText) {
     btn.disabled = true;
     btn.textContent = loadingText;
     statusDiv.style.display = 'none';
@@ -191,6 +201,36 @@ function handleAttendanceAction(btn, url, originalText, loadingText) {
             btn.textContent = originalText;
         }
     );
+}
+
+function handleCheckOutAction(btn, url, originalText, loadingText) {
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    statusDiv.style.display = 'none';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({}) // 위치 정보 필요 없음
+    })
+    .then(response => response.json())
+    .then(data => {
+        showMessage(data.status, data.message);
+        if (data.status === 'success') {
+            if (typeof htmx !== 'undefined') htmx.trigger('#attendanceList', 'load');
+            setTimeout(() => window.location.reload(), 1500);
+        }
+        btn.disabled = false;
+        btn.textContent = originalText;
+    })
+    .catch(() => {
+        showMessage('error', '서버 통신 중 오류가 발생했습니다.');
+        btn.disabled = false;
+        btn.textContent = originalText;
+    });
 }
 
 function handleAdminLocation(btn) {
