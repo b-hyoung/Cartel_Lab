@@ -146,6 +146,7 @@ class WeeklyGoal(models.Model):
         ("red", "Red"),
         ("blue", "Blue"),
         ("yellow", "Yellow"),
+        ("green", "Green"),
     ]
 
     user = models.ForeignKey(
@@ -197,6 +198,7 @@ class DailyTodo(models.Model):
         ("red", "Red"),
         ("blue", "Blue"),
         ("yellow", "Yellow"),
+        ("green", "Green"),
     ]
 
     user = models.ForeignKey(

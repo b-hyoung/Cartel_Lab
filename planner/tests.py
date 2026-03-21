@@ -57,9 +57,9 @@ class WeeklyPlannerTests(TestCase):
         response = self.client.post(
             reverse("planner-goal-add"),
             {
-                "week_start": self.week_start.isoformat(),
-                "weekday": "2",
-                "planned_time": "09:30",
+                "start_date": date(2026, 3, 10).isoformat(),
+                "planned_time_hour": "09",
+                "planned_time_minute": "30",
                 "content": "new weekly goal",
             },
         )
@@ -69,6 +69,7 @@ class WeeklyPlannerTests(TestCase):
         self.assertEqual(goal.user, self.user1)
         self.assertEqual(goal.weekday, 2)
         self.assertEqual(goal.planned_time.strftime("%H:%M"), "09:30")
+        self.assertFalse(DailyTodo.objects.filter(content="new weekly goal").exists())
 
     def test_toggle_goal_only_for_owner(self):
         goal = WeeklyGoal.objects.create(
@@ -118,14 +119,15 @@ class WeeklyPlannerTests(TestCase):
             reverse("planner-goal-update", args=[goal.id]),
             {
                 "week_start": self.week_start.isoformat(),
-                "planned_time": "14:15",
+                "planned_time_hour": "14",
+                "planned_time_minute": "30",
                 "content": "after edit",
             },
         )
         self.assertEqual(response.status_code, 302)
         goal.refresh_from_db()
         self.assertEqual(goal.content, "after edit")
-        self.assertEqual(goal.planned_time.strftime("%H:%M"), "14:15")
+        self.assertEqual(goal.planned_time.strftime("%H:%M"), "14:30")
 
     def test_add_lab_goal_requires_login(self):
         response = self.client.post(
@@ -156,11 +158,16 @@ class WeeklyPlannerTests(TestCase):
         self.client.login(student_id="20260001", password="pass-1234-abcd")
         response = self.client.post(
             reverse("planner-daily-todo-add"),
-            {"target_date": self.week_start.isoformat(), "planned_time": "08:40", "content": "todo"},
+            {
+                "target_date": self.week_start.isoformat(),
+                "planned_time_hour": "08",
+                "planned_time_minute": "30",
+                "content": "todo",
+            },
         )
         self.assertEqual(response.status_code, 302)
         todo = DailyTodo.objects.get(user=self.user1, target_date=self.week_start, content="todo")
-        self.assertEqual(todo.planned_time.strftime("%H:%M"), "08:40")
+        self.assertEqual(todo.planned_time.strftime("%H:%M"), "08:30")
 
     def test_toggle_daily_todo_only_for_owner(self):
         todo = DailyTodo.objects.create(
@@ -271,3 +278,29 @@ class WeeklyPlannerTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(DailyTodo.objects.filter(id=checked_todo.id).exists())
         self.assertTrue(DailyTodo.objects.filter(content="unchecked todo").exists())
+
+    def test_set_daily_todos_checked_marks_all_items(self):
+        DailyTodo.objects.create(
+            user=self.user1,
+            target_date=self.week_start,
+            content="todo one",
+            is_checked=False,
+        )
+        DailyTodo.objects.create(
+            user=self.user1,
+            target_date=self.week_start,
+            content="todo two",
+            is_checked=False,
+        )
+
+        self.client.login(student_id="20260001", password="pass-1234-abcd")
+        response = self.client.post(
+            reverse("planner-daily-todo-set-checked"),
+            {"target_date": self.week_start.isoformat(), "month": "2026-03", "checked": "1"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            DailyTodo.objects.filter(user=self.user1, target_date=self.week_start, is_checked=True).count(),
+            2,
+        )
