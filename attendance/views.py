@@ -100,29 +100,8 @@ def attendance_list(request):
 @require_POST
 def check_in(request):
     """
-    사용자 위치를 기반으로 출석 처리
+    위치와 무관하게 출석 처리
     """
-    try:
-        import json
-        data = json.loads(request.body)
-        user_lat = float(data.get("latitude"))
-        user_lon = float(data.get("longitude"))
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({"status": "error", "message": "잘못된 위치 정보입니다."}, status=400)
-
-    # 활성화된 출결 가능 위치 정보를 가져옴
-    location = LocationSetting.objects.filter(is_active=True).first()
-    if not location:
-        return JsonResponse({"status": "error", "message": "설정된 출결 위치가 없습니다. 관리자에게 문의하세요."}, status=400)
-
-    distance = haversine_distance(user_lat, user_lon, location.latitude, location.longitude)
-
-    if distance > location.radius:
-        return JsonResponse({
-            "status": "error", 
-            "message": f"위치 범위를 벗어났습니다. (현재 약 {int(distance)}m 거리)"
-        }, status=403)
-
     # 오늘 이미 출석했는지 확인
     today = timezone.localdate()
     now_time = timezone.localtime().time()
@@ -142,7 +121,7 @@ def check_in(request):
     if not created:
         return JsonResponse({"status": "info", "message": "이미 오늘 출석 완료되었습니다."})
 
-    msg = f"{location.name}에 출석 완료되었습니다!" if status == "present" else f"지각 처리되었습니다. (기준: {time_setting.check_in_deadline.strftime('%H:%M')})"
+    msg = "출석 완료되었습니다!" if status == "present" else f"지각 처리되었습니다. (기준: {time_setting.check_in_deadline.strftime('%H:%M')})"
     return JsonResponse({"status": "success", "message": msg})
 
 
@@ -150,28 +129,8 @@ def check_in(request):
 @require_POST
 def check_out(request):
     """
-    사용자 위치를 기반으로 퇴실 처리
+    위치와 무관하게 퇴실 처리
     """
-    try:
-        import json
-        data = json.loads(request.body)
-        user_lat = float(data.get("latitude"))
-        user_lon = float(data.get("longitude"))
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({"status": "error", "message": "잘못된 위치 정보입니다."}, status=400)
-
-    location = LocationSetting.objects.filter(is_active=True).first()
-    if not location:
-        return JsonResponse({"status": "error", "message": "설정된 위치 정보가 없습니다."}, status=400)
-
-    distance = haversine_distance(user_lat, user_lon, location.latitude, location.longitude)
-
-    if distance > location.radius:
-        return JsonResponse({
-            "status": "error", 
-            "message": f"위치 범위를 벗어났습니다. (현재 약 {int(distance)}m 거리)"
-        }, status=403)
-
     # 오늘 출석 기록 찾기
     today = timezone.localdate()
     try:
