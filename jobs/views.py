@@ -110,7 +110,20 @@ def jobs_index(request):
             -job.id,
         )
     )
-    return render(request, "jobs/index.html", {"jobs": jobs, "scoring_enabled": scoring_enabled})
+
+    seen = set()
+    all_tags = []
+    for job in jobs:
+        for tag in job.ui_tags:
+            if tag not in seen:
+                seen.add(tag)
+                all_tags.append(tag)
+
+    return render(request, "jobs/index.html", {
+        "jobs": jobs,
+        "scoring_enabled": scoring_enabled,
+        "all_tags": all_tags,
+    })
 
 
 def jobs_sync(request):

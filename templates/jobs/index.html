@@ -402,6 +402,51 @@
     body.modal-open {
         overflow: hidden;
     }
+    .job-tag-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 16px 0 4px;
+    }
+    .job-tag-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 13px;
+        border-radius: 999px;
+        border: 1.5px solid #e2e6ef;
+        background: #f6f7f9;
+        color: #555d6b;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s, border-color 0.12s;
+        white-space: nowrap;
+    }
+    .job-tag-btn:hover {
+        background: #edf3ff;
+        border-color: #bad0fb;
+        color: #2563eb;
+    }
+    .job-tag-btn.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+    .job-tag-filter-clear {
+        display: none;
+        align-items: center;
+        padding: 7px 13px;
+        border-radius: 999px;
+        border: 1.5px solid #e2e6ef;
+        background: #fff;
+        color: #888;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .job-tag-filter-clear.visible {
+        display: inline-flex;
+    }
     @media (max-width: 760px) {
         /* 카드 */
         .jobs-list {
@@ -489,10 +534,19 @@
 </p>
 {% endif %}
 
+{% if all_tags %}
+<div class="job-tag-filter" id="tag-filter-bar">
+    <button class="job-tag-filter-clear" id="tag-filter-clear">전체 보기</button>
+    {% for tag in all_tags %}
+    <button class="job-tag-btn" data-tag="{{ tag }}">{{ tag }}</button>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% if jobs %}
-<div class="jobs-list">
+<div class="jobs-list" id="jobs-list">
     {% for job in jobs %}
-    <article class="landing-card job-card" data-job-id="{{ job.id }}" tabindex="0" role="button" aria-haspopup="dialog">
+    <article class="landing-card job-card" data-job-id="{{ job.id }}" data-tags="{{ job.ui_tags|join:',' }}" tabindex="0" role="button" aria-haspopup="dialog">
         <div class="job-card-top">
             <div class="job-card-topline">
                 <div class="job-card-badge">
@@ -595,6 +649,48 @@
 </div>
 
 <script>
+    // 태그 필터
+    (function () {
+        var tagBtns = document.querySelectorAll(".job-tag-btn");
+        var clearBtn = document.getElementById("tag-filter-clear");
+        var jobCards = document.querySelectorAll(".job-card");
+        var activeTag = null;
+
+        function applyFilter(tag) {
+            jobCards.forEach(function (card) {
+                var tags = (card.getAttribute("data-tags") || "").split(",").map(function (t) { return t.trim(); });
+                card.style.display = (!tag || tags.indexOf(tag) !== -1) ? "" : "none";
+            });
+        }
+
+        tagBtns.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                var tag = btn.getAttribute("data-tag");
+                if (activeTag === tag) {
+                    activeTag = null;
+                    btn.classList.remove("active");
+                    clearBtn.classList.remove("visible");
+                } else {
+                    tagBtns.forEach(function (b) { b.classList.remove("active"); });
+                    btn.classList.add("active");
+                    activeTag = tag;
+                    clearBtn.classList.add("visible");
+                }
+                applyFilter(activeTag);
+            });
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener("click", function () {
+                activeTag = null;
+                tagBtns.forEach(function (b) { b.classList.remove("active"); });
+                clearBtn.classList.remove("visible");
+                applyFilter(null);
+            });
+        }
+    })();
+
+    // 모달
     (function () {
         var modal = document.getElementById("job-modal");
         var modalBody = document.getElementById("job-modal-body");
