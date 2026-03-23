@@ -37,6 +37,7 @@ async function scheduleNotifications(timetable) {
         body: `${entry.start_time} 시작`,
       },
       trigger: {
+        type: 'weekly',
         weekday: entry.weekday + 2, // Expo: 1=일, 2=월 ... 6=금
         hour: notifyHour,
         minute: notifyMinute,

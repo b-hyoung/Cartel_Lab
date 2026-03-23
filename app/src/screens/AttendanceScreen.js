@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -9,6 +10,14 @@ import {
   View,
 } from 'react-native';
 import { checkIn, checkOut, getTodayStatus } from '../api/client';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function AttendanceScreen({ name, onLogout }) {
   const [loading, setLoading] = useState(false);
@@ -64,6 +73,27 @@ export default function AttendanceScreen({ name, onLogout }) {
     }
   };
 
+  const handleTestNotification = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('알림 권한 필요', '설정에서 알림 권한을 허용해주세요.');
+      return;
+    }
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '안녕하세요 👋',
+          body: '좋은 하루 되세요!',
+          sound: 'default',
+        },
+        trigger: { type: 'timeInterval', seconds: 4 },
+      });
+      Alert.alert('알림 예약', '4초 후 알림이 옵니다. 지금 홈으로 내려주세요!');
+    } catch (e) {
+      Alert.alert('오류', e.message);
+    }
+  };
+
   const handleLogout = async () => {
     await AsyncStorage.multiRemove(['token', 'name']);
     onLogout();
@@ -107,6 +137,10 @@ export default function AttendanceScreen({ name, onLogout }) {
       )}
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
+
+      <TouchableOpacity style={styles.testBtn} onPress={handleTestNotification}>
+        <Text style={styles.testBtnText}>알림 테스트</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -169,6 +203,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#16a34a',
+  },
+  testBtn: {
+    marginTop: 32,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+  },
+  testBtnText: {
+    fontSize: 13,
+    color: '#6b7280',
   },
   message: {
     marginTop: 24,
