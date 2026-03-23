@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 from typing import Any
 
+from django.core.cache import cache
 from django.conf import settings
 from django.utils import timezone
 
@@ -252,6 +253,14 @@ def _today_refresh_cutoff():
 def get_or_refresh_market_snapshot(force: bool = False) -> JobMarketSnapshot | None:
     import threading
 
+    _CACHE_KEY = "market_snapshot"
+
+    # 캐시에서 먼저 확인 (force가 아닐 때만)
+    if not force:
+        cached = cache.get(_CACHE_KEY)
+        if cached is not None:
+            return cached
+
     latest = JobMarketSnapshot.objects.filter(analysis_key=MARKET_ANALYSIS_KEY).first()
     now = timezone.localtime()
     cutoff = _today_refresh_cutoff()
@@ -264,6 +273,7 @@ def get_or_refresh_market_snapshot(force: bool = False) -> JobMarketSnapshot | N
     )
 
     if not needs_refresh:
+        cache.set(_CACHE_KEY, latest, 60 * 60)  # 1시간 캐시
         return latest
 
     jobs = list(
@@ -278,7 +288,9 @@ def get_or_refresh_market_snapshot(force: bool = False) -> JobMarketSnapshot | N
     if latest is None:
         # 스냅샷이 아예 없으면 동기 실행 (첫 로드)
         _run_market_refresh(jobs, current_total_jobs)
-        return JobMarketSnapshot.objects.filter(analysis_key=MARKET_ANALYSIS_KEY).first()
+        latest = JobMarketSnapshot.objects.filter(analysis_key=MARKET_ANALYSIS_KEY).first()
+        cache.set(_CACHE_KEY, latest, 60 * 60)
+        return latest
 
     # 기존 스냅샷이 있으면 백그라운드에서 갱신, 현재 스냅샷 즉시 반환
     threading.Thread(
@@ -286,4 +298,5 @@ def get_or_refresh_market_snapshot(force: bool = False) -> JobMarketSnapshot | N
         args=(jobs, current_total_jobs),
         daemon=True,
     ).start()
+    cache.set(_CACHE_KEY, latest, 60 * 60)
     return latest

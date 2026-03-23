@@ -79,6 +79,13 @@ def build_main_task_preview(job):
 
 
 def jobs_index(request):
+    _ONE_DAY = 60 * 60 * 24
+    user_id = request.user.id if request.user.is_authenticated else "anonymous"
+    cache_key = f"jobs_index_{user_id}"
+    cached = cache.get(cache_key)
+    if cached:
+        return render(request, "jobs/index.html", cached)
+
     jobs = list(
         JobPosting.objects.filter(is_active=True).order_by("-posted_at", "-updated_at", "-id")[:100]
     )
@@ -117,11 +124,13 @@ def jobs_index(request):
     used_keys = {key for job in jobs for key in job.ui_categories}
     active_categories = [c for c in JOB_CATEGORIES if c["key"] in used_keys]
 
-    return render(request, "jobs/index.html", {
+    ctx = {
         "jobs": jobs,
         "scoring_enabled": scoring_enabled,
         "categories": active_categories,
-    })
+    }
+    cache.set(cache_key, ctx, _ONE_DAY)
+    return render(request, "jobs/index.html", ctx)
 
 
 def jobs_sync(request):
