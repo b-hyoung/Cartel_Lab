@@ -40,7 +40,7 @@
         security: { label: "\ubcf4\uc548" }
     };
 
-    if (!detailPanel || !selectorList || !pinnedList || !statsPanel || !searchInput || !liveAlert || !liveAlertList || !certModal || !calendarModal || !calendarSelect || !calendarCopy || !calendarFeedback || !calendarSubmitButton) {
+    if (!detailPanel || !selectorList || !pinnedList || !searchInput || !liveAlert || !liveAlertList || !certModal || !calendarModal || !calendarSelect || !calendarCopy || !calendarFeedback || !calendarSubmitButton) {
         return;
     }
 
@@ -436,6 +436,8 @@
     }
 
     function renderStats(items) {
+        if (!statsPanel) return;
+
         var openCount = items.filter(hasOpenRegistration).length;
         var urgentCount = items.filter(function (item) {
             var code = getUrgency(item).code;
@@ -982,12 +984,14 @@
             render();
         })
         .catch(function () {
-            statsPanel.innerHTML = '' +
-                '<div class="cert-stat">' +
-                    '<p class="cert-stat-label">遺덈윭?ㅺ린 ?ㅽ뙣</p>' +
-                    '<p class="cert-stat-value">!</p>' +
-                    '<p class="cert-stat-copy">?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.</p>' +
-                '</div>';
+            if (statsPanel) {
+                statsPanel.innerHTML = '' +
+                    '<div class="cert-stat">' +
+                        '<p class="cert-stat-label">불러오기 실패</p>' +
+                        '<p class="cert-stat-value">!</p>' +
+                        '<p class="cert-stat-copy">잠시 후 다시 시도해주세요.</p>' +
+                    '</div>';
+            }
             selectorList.innerHTML = '<div class="cert-error">?먭꺽利?紐⑸줉??媛?몄삤吏 紐삵뻽?듬땲??</div>';
             detailPanel.innerHTML = '<div class="cert-error">怨듭떇 ?먭꺽利??쇱젙 ?곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??</div>';
         });

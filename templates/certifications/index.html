@@ -4,7 +4,7 @@
 {% block title %}자격증 정보{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'certifications/index.css' %}?v=20260323a">
+<link rel="stylesheet" href="{% static 'certifications/index.css' %}?v=20260323c">
 
 <div
     class="cert-page"
@@ -21,32 +21,26 @@
         <div id="certLiveAlertList" class="cert-live-alert-list"></div>
     </section>
 
-    <section class="cert-toolbar">
-        <input id="certSearchInput" class="cert-search" type="search" placeholder="자격증 이름, 약어, 기관명으로 찾기">
-        <div class="cert-filter-actions">
-            <button type="button" class="cert-filter-btn is-active" data-filter="all">전체</button>
-            <button type="button" class="cert-filter-btn" data-filter="favorites">관심</button>
-            <button type="button" class="cert-filter-btn" data-filter="open">접수중</button>
-            <button type="button" class="cert-filter-btn" data-filter="urgent">임박</button>
+    <section class="cert-control-panel">
+        <div class="cert-toolbar">
+            <input id="certSearchInput" class="cert-search" type="search" placeholder="자격증 이름, 약어, 기관명으로 찾기">
+            <div class="cert-filter-actions">
+                <button type="button" class="cert-filter-btn is-active" data-filter="all">전체</button>
+                <button type="button" class="cert-filter-btn" data-filter="favorites">관심</button>
+                <button type="button" class="cert-filter-btn" data-filter="open">접수중</button>
+                <button type="button" class="cert-filter-btn" data-filter="urgent">임박</button>
+            </div>
         </div>
-    </section>
 
-    <section class="cert-category-bar">
-        <p class="cert-category-label">카테고리</p>
-        <div class="cert-category-actions">
-            <button type="button" class="cert-category-btn is-active" data-category="all">전체</button>
-            <button type="button" class="cert-category-btn" data-category="development">개발</button>
-            <button type="button" class="cert-category-btn" data-category="db">DB</button>
-            <button type="button" class="cert-category-btn" data-category="design">디자인</button>
-            <button type="button" class="cert-category-btn" data-category="security">보안</button>
-        </div>
-    </section>
-
-    <section id="certStats" class="cert-stats">
-        <div class="cert-stat">
-            <p class="cert-stat-label">불러오는 중</p>
-            <p class="cert-stat-value">...</p>
-            <p class="cert-stat-copy">공식 일정을 확인하고 있습니다.</p>
+        <div class="cert-category-bar">
+            <p class="cert-category-label">카테고리</p>
+            <div class="cert-category-actions">
+                <button type="button" class="cert-category-btn is-active" data-category="all">전체</button>
+                <button type="button" class="cert-category-btn" data-category="development">개발</button>
+                <button type="button" class="cert-category-btn" data-category="db">DB</button>
+                <button type="button" class="cert-category-btn" data-category="design">디자인</button>
+                <button type="button" class="cert-category-btn" data-category="security">보안</button>
+            </div>
         </div>
     </section>
 
@@ -119,5 +113,5 @@
     </div>
 </div>
 
-<script src="{% static 'certifications/index.js' %}?v=20260323a"></script>
+<script src="{% static 'certifications/index.js' %}?v=20260323d"></script>
 {% endblock %}

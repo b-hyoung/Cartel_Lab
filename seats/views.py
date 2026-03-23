@@ -13,11 +13,11 @@ def _attendance_labels_for_user(user, today):
         return []
 
     if not user.last_login:
-        return ["미출첵", "미로그인"]
+        return ["미출첵"]
 
     last_login = timezone.localtime(user.last_login)
     if last_login.date() != today:
-        return ["미출첵", "미로그인"]
+        return ["미출첵"]
 
     return ["출첵하세요"]
 

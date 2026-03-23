@@ -75,15 +75,24 @@
     font-weight: 800;
 }
 
+.cert-control-panel {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--cert-line);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.04);
+}
+
 .cert-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
-    border-radius: 18px;
-    border: 1px solid var(--cert-line);
-    background: #fff;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .cert-panel-copy {
@@ -145,10 +154,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    padding: 12px 16px;
-    border-radius: 18px;
-    border: 1px solid var(--cert-line);
-    background: #fff;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .cert-category-label {
@@ -879,7 +887,7 @@ body.calendar-modal-open {
 @media (max-width: 1100px) {
     .cert-stats,
     .cert-glance {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .cert-selector-list {
@@ -888,6 +896,113 @@ body.calendar-modal-open {
 }
 
 @media (max-width: 760px) {
+    .cert-page {
+        gap: 14px;
+    }
+
+    .cert-hero {
+        padding: 22px 18px;
+        border-radius: 24px;
+    }
+
+    .cert-hero h1 {
+        font-size: clamp(26px, 8vw, 34px);
+    }
+
+    .cert-hero p {
+        font-size: 14px;
+        line-height: 1.65;
+    }
+
+    .cert-live-alert {
+        padding: 14px 14px 12px;
+        border-radius: 16px;
+    }
+
+    .cert-live-alert-list {
+        gap: 6px;
+    }
+
+    .cert-live-alert-item {
+        padding: 6px 9px;
+        font-size: 11px;
+    }
+
+    .cert-control-panel,
+    .cert-toolbar,
+    .cert-category-bar,
+    .cert-browser,
+    .cert-panel,
+    .cert-stat,
+    .cert-selector-section,
+    .cert-card,
+    .cert-schedule-item {
+        border-radius: 18px;
+    }
+
+    .cert-control-panel {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .cert-toolbar,
+    .cert-category-bar {
+        padding: 0;
+    }
+
+    .cert-search {
+        flex-basis: 100%;
+        min-width: 0;
+        width: 100%;
+        padding: 11px 13px;
+        font-size: 14px;
+    }
+
+    .cert-filter-actions,
+    .cert-category-actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .cert-filter-actions {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .cert-category-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cert-filter-btn,
+    .cert-category-btn,
+    .cert-card-action,
+    .cert-calendar-trigger {
+        justify-content: center;
+        width: 100%;
+        min-height: 40px;
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .cert-category-label {
+        width: 100%;
+        margin-bottom: 2px;
+    }
+
+    .cert-stats {
+        display: none;
+    }
+
+    .cert-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .cert-stat,
+    .cert-panel,
+    .cert-card {
+        padding: 16px;
+    }
+
     .cert-card-head,
     .cert-browser-head,
     .cert-modal-head,
@@ -897,16 +1012,161 @@ body.calendar-modal-open {
         align-items: flex-start;
     }
 
+    .cert-browser {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .cert-browser-note {
+        justify-content: flex-start;
+    }
+
+    .cert-browser-head h2,
+    .cert-panel h2,
+    .cert-panel h3 {
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+
+    .cert-panel-copy,
+    .cert-selector-section-head p,
+    .cert-card-copy,
+    .cert-inline-tip,
+    .cert-selector-tip {
+        font-size: 12px;
+        line-height: 1.55;
+    }
+
+    .cert-selector-section {
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .cert-section-count {
+        min-width: 36px;
+        height: 36px;
+        font-size: 13px;
+    }
+
     .cert-selector-glance {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
     }
 
     .cert-selector-list {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cert-selector-btn {
+        gap: 10px;
+        padding: 14px;
+        border-radius: 18px;
+    }
+
+    .cert-selector-name {
+        font-size: 15px;
+    }
+
+    .cert-selector-sub,
+    .cert-selector-meta,
+    .cert-selector-open {
+        font-size: 11px;
+    }
+
+    .cert-selector-sub,
+    .cert-selector-open {
+        display: none;
+    }
+
+    .cert-selector-date-pill,
+    .cert-mini-badge,
+    .cert-chip {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    .cert-browser-note,
+    .cert-feature-panel {
+        display: none;
+    }
+
+    .cert-selector-glance-item {
+        padding: 9px 10px;
+        border-radius: 14px;
+    }
+
+    .cert-selector-glance-item strong {
+        font-size: 10px;
+    }
+
+    .cert-selector-glance-item span {
+        font-size: 12px;
+    }
+
+    .cert-selector-foot,
+    .cert-selector-foot-actions,
+    .cert-link-group {
+        width: 100%;
+    }
+
+    .cert-selector-foot {
+        align-items: stretch;
+    }
+
+    .cert-selector-foot-actions,
+    .cert-link-group {
+        justify-content: flex-start;
+    }
+
+    .cert-link-group {
+        gap: 6px;
+    }
+
+    .cert-link {
+        flex: 1 1 140px;
+        justify-content: center;
+        text-align: center;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .cert-glance {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 14px 0;
+    }
+
+    .cert-glance-item {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .cert-glance-value {
+        font-size: 14px;
+        line-height: 1.45;
     }
 
     .cert-schedule-grid {
         grid-template-columns: 1fr;
+    }
+
+    .cert-schedule-item {
+        padding: 12px 13px;
+    }
+
+    .cert-schedule-round {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .cert-calendar-panel {
+        width: min(100vw - 20px, 480px);
+        margin-top: 18vh;
+        border-radius: 22px;
+    }
+
+    .cert-calendar-body {
+        padding: 0 16px 16px;
     }
 
     .cert-modal {
@@ -922,5 +1182,24 @@ body.calendar-modal-open {
 
     .cert-modal-body {
         padding: 18px;
+    }
+}
+
+@media (max-width: 420px) {
+    .cert-stats,
+    .cert-glance,
+    .cert-selector-glance,
+    .cert-filter-actions,
+    .cert-category-actions,
+    .cert-selector-list {
+        grid-template-columns: 1fr;
+    }
+
+    .cert-browser,
+    .cert-panel,
+    .cert-stat,
+    .cert-selector-section,
+    .cert-card {
+        padding: 14px;
     }
 }
