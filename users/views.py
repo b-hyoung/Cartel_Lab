@@ -474,7 +474,10 @@ def login_view(request):
             cache.delete(lockout_key)
             login(request, form.get_user())
             messages.success(request, "로그인되었습니다.")
-            return redirect("users-index")
+            
+            # next 파라미터가 있으면 해당 URL로, 없으면 기본 인덱스로 리다이렉트
+            next_url = request.POST.get("next") or request.GET.get("next") or "users-index"
+            return redirect(next_url)
         else:
             attempts = cache.get(attempt_key, 0) + 1
             if attempts >= 10:
