@@ -395,11 +395,13 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 12px;
         margin-top: 14px;
+        align-items: stretch;
     }
     .ai-analysis-card {
         border-radius: 16px;
         padding: 14px 16px;
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 10px;
     }
     .ai-analysis-card.strengths {
@@ -426,11 +428,13 @@
     .ai-analysis-card.gaps .ai-analysis-card-title { color: #b85c00; }
     .ai-analysis-card.study .ai-analysis-card-title { color: #2850b8; }
     .ai-analysis-card-list {
+        flex: 1;
         margin: 0;
         padding: 0;
         list-style: none;
         display: grid;
         gap: 6px;
+        align-content: start;
     }
     .ai-analysis-card-list li {
         font-size: 13px;
