@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from jobs.models import JobPosting
+from jobs.categories import JOB_CATEGORIES, classify_job
 from jobs.services.job_detail import fetch_job_detail
 from jobs.services.recommendation import (
     can_score_user,
@@ -93,6 +94,7 @@ def jobs_index(request):
         job.ui_deadline_label = build_deadline_label(job)
         job.ui_tags = build_job_tags(job)
         job.ui_main_tasks = build_main_task_preview(job)
+        job.ui_categories = classify_job(job)
         recommendation = score_job_for_user(
             request.user, job,
             profile_skills=_profile_skills,
@@ -111,18 +113,13 @@ def jobs_index(request):
         )
     )
 
-    seen = set()
-    all_tags = []
-    for job in jobs:
-        for tag in job.ui_tags:
-            if tag not in seen:
-                seen.add(tag)
-                all_tags.append(tag)
+    used_keys = {key for job in jobs for key in job.ui_categories}
+    active_categories = [c for c in JOB_CATEGORIES if c["key"] in used_keys]
 
     return render(request, "jobs/index.html", {
         "jobs": jobs,
         "scoring_enabled": scoring_enabled,
-        "all_tags": all_tags,
+        "categories": active_categories,
     })
 
 

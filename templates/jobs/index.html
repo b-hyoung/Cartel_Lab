@@ -534,11 +534,11 @@
 </p>
 {% endif %}
 
-{% if all_tags %}
+{% if categories %}
 <div class="job-tag-filter" id="tag-filter-bar">
     <button class="job-tag-filter-clear" id="tag-filter-clear">전체 보기</button>
-    {% for tag in all_tags %}
-    <button class="job-tag-btn" data-tag="{{ tag }}">{{ tag }}</button>
+    {% for cat in categories %}
+    <button class="job-tag-btn" data-category="{{ cat.key }}">{{ cat.label }}</button>
     {% endfor %}
 </div>
 {% endif %}
@@ -546,7 +546,7 @@
 {% if jobs %}
 <div class="jobs-list" id="jobs-list">
     {% for job in jobs %}
-    <article class="landing-card job-card" data-job-id="{{ job.id }}" data-tags="{{ job.ui_tags|join:',' }}" tabindex="0" role="button" aria-haspopup="dialog">
+    <article class="landing-card job-card" data-job-id="{{ job.id }}" data-categories="{{ job.ui_categories|join:',' }}" tabindex="0" role="button" aria-haspopup="dialog">
         <div class="job-card-top">
             <div class="job-card-topline">
                 <div class="job-card-badge">
@@ -649,41 +649,41 @@
 </div>
 
 <script>
-    // 태그 필터
+    // 카테고리 필터
     (function () {
-        var tagBtns = document.querySelectorAll(".job-tag-btn");
+        var catBtns = document.querySelectorAll(".job-tag-btn");
         var clearBtn = document.getElementById("tag-filter-clear");
         var jobCards = document.querySelectorAll(".job-card");
-        var activeTag = null;
+        var activeCategory = null;
 
-        function applyFilter(tag) {
+        function applyFilter(category) {
             jobCards.forEach(function (card) {
-                var tags = (card.getAttribute("data-tags") || "").split(",").map(function (t) { return t.trim(); });
-                card.style.display = (!tag || tags.indexOf(tag) !== -1) ? "" : "none";
+                var cats = (card.getAttribute("data-categories") || "").split(",").map(function (c) { return c.trim(); });
+                card.style.display = (!category || cats.indexOf(category) !== -1) ? "" : "none";
             });
         }
 
-        tagBtns.forEach(function (btn) {
+        catBtns.forEach(function (btn) {
             btn.addEventListener("click", function () {
-                var tag = btn.getAttribute("data-tag");
-                if (activeTag === tag) {
-                    activeTag = null;
+                var category = btn.getAttribute("data-category");
+                if (activeCategory === category) {
+                    activeCategory = null;
                     btn.classList.remove("active");
                     clearBtn.classList.remove("visible");
                 } else {
-                    tagBtns.forEach(function (b) { b.classList.remove("active"); });
+                    catBtns.forEach(function (b) { b.classList.remove("active"); });
                     btn.classList.add("active");
-                    activeTag = tag;
+                    activeCategory = category;
                     clearBtn.classList.add("visible");
                 }
-                applyFilter(activeTag);
+                applyFilter(activeCategory);
             });
         });
 
         if (clearBtn) {
             clearBtn.addEventListener("click", function () {
-                activeTag = null;
-                tagBtns.forEach(function (b) { b.classList.remove("active"); });
+                activeCategory = null;
+                catBtns.forEach(function (b) { b.classList.remove("active"); });
                 clearBtn.classList.remove("visible");
                 applyFilter(null);
             });
