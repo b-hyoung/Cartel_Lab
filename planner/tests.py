@@ -30,10 +30,14 @@ class WeeklyPlannerTests(TestCase):
         self.week_start = date(2026, 3, 8)
 
     def test_planner_is_public_and_shows_lab_goal(self):
-        LabWideGoal.objects.create(created_by=self.user1, content="shared goal")
+        LabWideGoal.objects.create(
+            created_by=self.user1,
+            week_start=date(2026, 3, 23),
+            content="shared goal",
+        )
         response = self.client.get(reverse("planner-index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "?⑹떎 ?꾩껜 紐⑺몴")
+        self.assertContains(response, "이번주 목표")
         self.assertContains(response, "shared goal")
 
     def test_only_own_goals_are_visible(self):
@@ -90,6 +94,28 @@ class WeeklyPlannerTests(TestCase):
         self.assertEqual(response.status_code, 302)
         goal = WeeklyGoal.objects.get(content="time-free goal")
         self.assertIsNone(goal.planned_time)
+
+    @patch("planner.views._sync_weekly_goal_create")
+    def test_add_goal_syncs_google_calendar_when_connected(self, sync_goal_mock):
+        GoogleCalendarCredential.objects.create(
+            user=self.user1,
+            google_email="user1@example.com",
+            access_token="access-token",
+        )
+        self.client.login(student_id="20260001", password="pass-1234-abcd")
+
+        response = self.client.post(
+            reverse("planner-goal-add"),
+            {
+                "start_date": date(2026, 3, 10).isoformat(),
+                "content": "google synced goal",
+                "color": "blue",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        goal = WeeklyGoal.objects.get(user=self.user1, content="google synced goal")
+        sync_goal_mock.assert_called_once_with(goal, date(2026, 3, 10))
 
     def test_toggle_goal_only_for_owner(self):
         goal = WeeklyGoal.objects.create(
@@ -163,10 +189,35 @@ class WeeklyPlannerTests(TestCase):
             {"content": "lab mission"},
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(LabWideGoal.objects.filter(content="lab mission").exists())
+        goal = LabWideGoal.objects.get(content="lab mission")
+        self.assertEqual(goal.week_start.weekday(), 0)
+
+    def test_goal_page_shows_previous_four_weeks_sections(self):
+        LabWideGoal.objects.create(
+            created_by=self.user1,
+            week_start=date(2026, 3, 23),
+            content="current week goal",
+        )
+        LabWideGoal.objects.create(
+            created_by=self.user1,
+            week_start=date(2026, 3, 16),
+            content="previous week goal",
+        )
+
+        response = self.client.get(reverse("planner-index") + "?view=goal")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "이번주 목표")
+        self.assertContains(response, "이전 4주 목표")
+        self.assertContains(response, "current week goal")
+        self.assertContains(response, "previous week goal")
 
     def test_delete_lab_goal_only_for_owner(self):
-        lab_goal = LabWideGoal.objects.create(created_by=self.user1, content="shared delete target")
+        lab_goal = LabWideGoal.objects.create(
+            created_by=self.user1,
+            week_start=date(2026, 3, 23),
+            content="shared delete target",
+        )
 
         response = self.client.post(reverse("planner-lab-goal-delete", args=[lab_goal.id]))
         self.assertEqual(response.status_code, 302)
@@ -198,12 +249,14 @@ class WeeklyPlannerTests(TestCase):
             reverse("planner-daily-todo-add"),
             {
                 "target_date": self.week_start.isoformat(),
+                "duration_days": "3",
                 "content": "todo",
             },
         )
         self.assertEqual(response.status_code, 302)
         todo = DailyTodo.objects.get(user=self.user1, target_date=self.week_start, content="todo")
         self.assertIsNone(todo.planned_time)
+        self.assertEqual(DailyTodo.objects.filter(user=self.user1, content="todo").count(), 1)
 
     def test_toggle_daily_todo_only_for_owner(self):
         todo = DailyTodo.objects.create(
