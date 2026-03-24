@@ -81,6 +81,86 @@
     }
     .user-dropdown-item.danger { color: #c2410c; }
     .user-dropdown-item.danger:hover { background: #fff5f0; color: #c2410c; }
+    .user-avatar {
+        width: 28px; height: 28px; border-radius: 50%;
+        object-fit: cover; flex-shrink: 0;
+        border: 1.5px solid #e2e5e9;
+    }
+    .user-avatar-placeholder {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #dbeafe; display: inline-flex;
+        align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; color: #1d4ed8;
+        flex-shrink: 0; border: 1.5px solid #e2e5e9;
+    }
+    .nav-links > a[href="/attendance/"] { order: 1; }
+    .nav-links > a[href="/certifications/"] { order: 2; }
+    .nav-links > a[href^="/planner/"] { order: 3; }
+    .nav-links > a[href="/seats/"] { order: 4; }
+    .nav-links > a[href="/jobs/"] { order: 5; }
+    .nav-links > .user-dropdown {
+        order: 99;
+        margin-left: 6px;
+    }
+    .cert-alert-bar {
+        display: none;
+        border-top: 1px solid #ffe0cc;
+        background: linear-gradient(90deg, #fff3ea 0%, #fff8f4 100%);
+    }
+    .cert-alert-bar.is-visible {
+        display: block;
+    }
+    .cert-alert-inner {
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 10px 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #b45309;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+    .cert-alert-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #ff6f0f;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .cert-nav-badge {
+        display: none;
+        margin-left: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #eef5ff;
+        color: #2f6fda;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        vertical-align: middle;
+    }
+    .cert-nav-badge.is-visible {
+        display: inline-flex;
+        align-items: center;
+    }
+    .cert-nav-badge.is-soon {
+        background: #fff0df;
+        color: #d95b05;
+    }
+    .cert-nav-badge.is-urgent {
+        background: #ffe1cc;
+        color: #c2410c;
+    }
+    .cert-nav-badge.is-today {
+        background: #ff6f0f;
+        color: #fff;
+    }
 
     @media (max-width: 760px) {
         .user-dropdown-menu {
@@ -125,6 +205,7 @@
         </button>
         <nav class="nav-links" id="site-nav">
             {% with path=request.path %}
+            <a href="/certifications/" class="nav-link{% if path|slice:':16' == '/certifications/' %} primary{% endif %}">자격증 정보</a>
             <a href="/attendance/" class="nav-link{% if path|slice:':12' == '/attendance/' %} primary{% endif %}">출결관리</a>
             <a href="/planner/?view=plan" class="nav-link{% if path|slice:':9' == '/planner/' %} primary{% endif %}">계획/목표</a>
             <a href="/seats/" class="nav-link{% if path|slice:':7' == '/seats/' %} primary{% endif %}">좌석현황</a>
@@ -134,6 +215,11 @@
             {% if request.user.is_authenticated %}
             <div class="user-dropdown" id="userDropdown">
                 <button class="user-dropdown-trigger" type="button" aria-expanded="false" aria-haspopup="true">
+                    {% if request.user.profile_image %}
+                    <img src="{{ request.user.profile_image.url }}" alt="프로필" class="user-avatar">
+                    {% else %}
+                    <span class="user-avatar-placeholder">{{ request.user.name|slice:":1" }}</span>
+                    {% endif %}
                     {{ request.user.name }}
                     <svg class="chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -181,6 +267,12 @@
         </nav>
     </div>
 </header>
+<div class="cert-alert-bar" id="certAlertBar">
+    <div class="cert-alert-inner">
+        <span class="cert-alert-badge">D-DAY</span>
+        <span id="certAlertText"></span>
+    </div>
+</div>
 <script>
     (function () {
         var toggle = document.querySelector(".menu-toggle");
@@ -250,5 +342,83 @@
                 item.addEventListener("click", closeDropdown);
             });
         }
+    })();
+
+    (function () {
+        var alertBar = document.getElementById("certAlertBar");
+        var alertText = document.getElementById("certAlertText");
+        var certNavLink = document.querySelector('.nav-links > a[href="/certifications/"]');
+        var navBadge = null;
+        if (!alertBar || !alertText) return;
+
+        function ensureNavBadge() {
+            if (!certNavLink) return null;
+            if (navBadge) return navBadge;
+            navBadge = document.createElement("span");
+            navBadge.className = "cert-nav-badge";
+            certNavLink.appendChild(navBadge);
+            return navBadge;
+        }
+
+        function showNavBadge(text) {
+            var badge = ensureNavBadge();
+            if (!badge) return;
+            badge.textContent = text;
+            badge.classList.add("is-visible");
+            badge.classList.remove("is-soon", "is-urgent", "is-today");
+        }
+
+        function showNavUrgency(code, text) {
+            showNavBadge(text);
+            if (!navBadge) return;
+            if (code === "soon") navBadge.classList.add("is-soon");
+            if (code === "urgent") navBadge.classList.add("is-urgent");
+            if (code === "today") navBadge.classList.add("is-today");
+        }
+
+        function getBestUpcomingStatus(items) {
+            var priority = { today: 4, urgent: 3, soon: 2, upcoming: 1, passed: 0, unknown: 0 };
+            var bestStatus = null;
+
+            (items || []).forEach(function (item) {
+                (item.schedules || []).forEach(function (schedule) {
+                    [
+                        schedule.written_exam_status,
+                        schedule.practical_exam_status,
+                        schedule.exam_status
+                    ].forEach(function (status) {
+                        if (!status || !status.code) return;
+                        if (["today", "urgent", "soon"].indexOf(status.code) === -1) return;
+                        if (!bestStatus || (priority[status.code] || 0) > (priority[bestStatus.code] || 0)) {
+                            bestStatus = status;
+                        }
+                    });
+                });
+            });
+
+            return bestStatus;
+        }
+
+        fetch("/certifications/api/important/")
+            .then(function (response) {
+                if (!response.ok) throw new Error("cert-alert");
+                return response.json();
+            })
+            .then(function (data) {
+                var alerts = data.today_alerts || [];
+                if (alerts.length) {
+                    alertText.textContent = alerts.map(function (item) {
+                        return item.name + " " + item.round + " " + item.part + " 시험일입니다.";
+                    }).join(" ");
+                    alertBar.classList.add("is-visible");
+                    showNavUrgency("today", "D-DAY");
+                    return;
+                }
+
+                var bestUpcomingStatus = getBestUpcomingStatus(data.items || []);
+                if (!bestUpcomingStatus) return;
+                showNavUrgency(bestUpcomingStatus.code, bestUpcomingStatus.label || bestUpcomingStatus.code.toUpperCase());
+            })
+            .catch(function () {});
     })();
 </script>
