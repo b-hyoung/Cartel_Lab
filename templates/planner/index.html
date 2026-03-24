@@ -1082,9 +1082,16 @@
         {% for lab_goal in current_lab_week_goals %}
         <li class="lab-goal-item">
             <div class="lab-goal-row">
-                <div class="lab-goal-text">
-                    <span class="lab-goal-meta">{{ lab_goal.created_by.name }} | {{ lab_goal.created_at|date:"m-d H:i" }}</span>
-                    <span class="lab-goal-content">{{ lab_goal.content }}</span>
+                <div class="lab-goal-text" style="display:flex;align-items:center;gap:8px;">
+                    {% if lab_goal.created_by.profile_image %}
+                    <img src="{{ lab_goal.created_by.profile_image.url }}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                    {% else %}
+                    <div style="width:24px;height:24px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1d4ed8;flex-shrink:0;">{{ lab_goal.created_by.name|slice:":1" }}</div>
+                    {% endif %}
+                    <div>
+                        <span class="lab-goal-meta">{{ lab_goal.created_by.name }} | {{ lab_goal.created_at|date:"m-d H:i" }}</span>
+                        <span class="lab-goal-content">{{ lab_goal.content }}</span>
+                    </div>
                 </div>
                 {% if request.user.is_authenticated and lab_goal.created_by_id == request.user.id %}
                 <form method="post" action="{% url 'planner-lab-goal-delete' lab_goal.id %}" class="lab-goal-delete-form">
@@ -1107,9 +1114,16 @@
                 {% for lab_goal in week.goals %}
                 <li class="lab-goal-item">
                     <div class="lab-goal-row">
-                        <div class="lab-goal-text">
-                            <span class="lab-goal-meta">{{ lab_goal.created_by.name }} | {{ lab_goal.created_at|date:"m-d H:i" }}</span>
-                            <span class="lab-goal-content">{{ lab_goal.content }}</span>
+                        <div class="lab-goal-text" style="display:flex;align-items:center;gap:8px;">
+                            {% if lab_goal.created_by.profile_image %}
+                            <img src="{{ lab_goal.created_by.profile_image.url }}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                            {% else %}
+                            <div style="width:24px;height:24px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1d4ed8;flex-shrink:0;">{{ lab_goal.created_by.name|slice:":1" }}</div>
+                            {% endif %}
+                            <div>
+                                <span class="lab-goal-meta">{{ lab_goal.created_by.name }} | {{ lab_goal.created_at|date:"m-d H:i" }}</span>
+                                <span class="lab-goal-content">{{ lab_goal.content }}</span>
+                            </div>
                         </div>
                         {% if request.user.is_authenticated and lab_goal.created_by_id == request.user.id %}
                         <form method="post" action="{% url 'planner-lab-goal-delete' lab_goal.id %}" class="lab-goal-delete-form">
