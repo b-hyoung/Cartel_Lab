@@ -39,11 +39,11 @@
             flex: 1;
         }
         .content-card {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            padding: 26px;
-            box-shadow: 0 4px 20px rgba(33, 33, 36, 0.05);
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
         }
         .message-stack {
             display: grid;
@@ -62,8 +62,8 @@
             position: sticky;
             top: 0;
             z-index: 20;
-            border-bottom: 2px solid #d1d5db;
-            background: var(--bg);
+            background: #fff;
+            border-bottom: 1px solid #f0f0f2;
         }
         .header-inner {
             max-width: 1380px;
@@ -97,7 +97,7 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 30px;
+            gap: 4px;
         }
         .menu-toggle {
             display: none;
@@ -137,25 +137,26 @@
             transform: translateY(-5px) rotate(-45deg);
         }
         .nav-link {
-            color: var(--muted);
+            color: #6b7280;
             text-decoration: none;
-            padding: 7px 10px;
+            padding: 7px 12px;
             border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            transition: color .2s ease, background-color .2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .15s ease;
         }
         .nav-link:hover {
-            color: var(--text);
-            background: #f1f2f4;
+            color: #111827;
+            background: none;
         }
         .nav-link.primary {
-            color: var(--brand);
-            background: var(--brand-soft);
+            color: #111827;
+            font-weight: 700;
+            background: none;
         }
         .nav-link.primary:hover {
-            background: #ffe5d6;
-            color: #e15900;
+            color: #111827;
+            background: none;
         }
         .site-footer {
             margin-top: 20px;
