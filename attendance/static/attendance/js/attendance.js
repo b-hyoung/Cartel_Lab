@@ -116,10 +116,72 @@ function initHeatmap(heatmapData) {
     }, 300);
 }
 
+function loadCheckoutRequests() {
+    fetch(checkoutRequestsUrl)
+        .then(r => r.json())
+        .then(data => {
+            const section = document.getElementById('checkoutRequestSection');
+            const list = document.getElementById('checkoutRequestList');
+            if (!section || !list) return;
+            const requests = data.requests || [];
+            if (requests.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            list.innerHTML = requests.map(req => `
+                <div id="req-${req.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                    <div>
+                        <span style="font-weight:600;color:#111;">${req.name}</span>
+                        <span style="font-size:13px;color:#6b7280;margin-left:8px;">${req.requested_time} 퇴실 신청</span>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="handleApproveRequest(${req.id})" style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">승인</button>
+                        <button onclick="handleRejectRequest(${req.id})" style="padding:6px 14px;background:#f3f4f6;color:#374151;border:none;border-radius:7px;font-size:13px;cursor:pointer;">반려</button>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(() => {});
+}
+
+function handleApproveRequest(requestId) {
+    fetch(approveRequestUrl.replace('0', requestId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+    })
+    .then(r => r.json())
+    .then(d => {
+        showMessage(d.status, d.message);
+        document.getElementById(`req-${requestId}`)?.remove();
+        loadCheckoutRequests();
+    })
+    .catch(() => {});
+}
+
+function handleRejectRequest(requestId) {
+    fetch(rejectRequestUrl.replace('0', requestId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+    })
+    .then(r => r.json())
+    .then(d => {
+        showMessage(d.status, d.message);
+        document.getElementById(`req-${requestId}`)?.remove();
+        loadCheckoutRequests();
+    })
+    .catch(() => {});
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     // Heatmap data is expected to be defined globally as 'heatmapRawData'
     if (typeof heatmapRawData !== 'undefined') {
         initHeatmap(heatmapRawData);
+    }
+    // 퇴실 승인 요청 목록 로드 (15초마다 갱신)
+    if (typeof checkoutRequestsUrl !== 'undefined') {
+        loadCheckoutRequests();
+        setInterval(loadCheckoutRequests, 15000);
     }
 
     // URL 파라미터 확인 (QR 코드 접속 여부)

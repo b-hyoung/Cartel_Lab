@@ -83,11 +83,17 @@
 
     <!-- 오른쪽 카드 (다른 인원들 출결 현황) -->
     <div class="dashboard-right">
+        <!-- 퇴실 승인 요청 섹션 -->
+        <div id="checkoutRequestSection" style="display:none;background:#fff;border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+            <h3 style="margin:0 0 12px;font-size:15px;font-weight:700;color:#111;">🚪 퇴실 확인 요청</h3>
+            <div id="checkoutRequestList"></div>
+        </div>
+
         <div class="others-attendance-card">
             <h2 class="my-name">다른 인원 출결 현황</h2>
             <!-- HTMX: 15초마다 목록 갱신 -->
-            <div hx-get="{% url 'attendance:list' %}" 
-                 hx-trigger="load, every 15s" 
+            <div hx-get="{% url 'attendance:list' %}"
+                 hx-trigger="load, every 15s"
                  hx-target="#attendanceList">
                 <div id="attendanceList">
                     <p class="loading">데이터를 불러오는 중...</p>
@@ -139,6 +145,9 @@
     const setTimeUrl = "{% url 'attendance:set-time' %}";
     const dailyGoalUrl = "{% url 'planner-api-daily-goal' %}";
     const checkOutRequestUrl = "{% url 'attendance:checkout-request' %}";
+    const checkoutRequestsUrl = "{% url 'attendance:checkout-requests' %}";
+    const approveRequestUrl = "{% url 'attendance:checkout-approve' 0 %}";
+    const rejectRequestUrl = "{% url 'attendance:checkout-reject' 0 %}";
 
     // JSON 데이터를 안전하게 파싱
     let heatmapRawData = {};
