@@ -98,6 +98,8 @@
     .nav-links > a[href^="/planner/"] { order: 3; }
     .nav-links > a[href="/seats/"] { order: 4; }
     .nav-links > a[href="/jobs/"] { order: 5; }
+    .nav-links > a[href="/quiz/"] { order: 6; }
+    .nav-links > a[href="/blog/"] { order: 7; }
     .nav-links > .user-dropdown {
         order: 99;
         margin-left: 6px;
@@ -205,8 +207,8 @@
         </button>
         <nav class="nav-links" id="site-nav">
             {% with path=request.path %}
-            <a href="/certifications/" class="nav-link{% if path|slice:':16' == '/certifications/' %} primary{% endif %}">자격증 정보</a>
             <a href="/attendance/" class="nav-link{% if path|slice:':12' == '/attendance/' %} primary{% endif %}">출결관리</a>
+            <a href="/certifications/" class="nav-link{% if path|slice:':16' == '/certifications/' %} primary{% endif %}">자격증 정보</a>
             <a href="/planner/?view=plan" class="nav-link{% if path|slice:':9' == '/planner/' %} primary{% endif %}">계획/목표</a>
             <a href="/seats/" class="nav-link{% if path|slice:':7' == '/seats/' %} primary{% endif %}">좌석현황</a>
             <a href="/jobs/" class="nav-link{% if path|slice:':6' == '/jobs/' %} primary{% endif %}">최신일자리</a>
