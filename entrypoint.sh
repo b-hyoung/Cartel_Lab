@@ -46,6 +46,9 @@ echo "DB 연결 성공!"
 python manage.py migrate --noinput
 echo "migrate 완료"
 
+python manage.py loaddata timetable/fixtures/initial_timetable.json
+echo "시간표 fixture 로드 완료"
+
 python manage.py shell -c "
 import os
 from users.models import User
@@ -62,6 +65,9 @@ if sid and pw:
 else:
     print('ADMIN_ID / ADMIN_PASSWORD 미설정, 건너뜀')
 "
+
+service cron start
+echo "cron 시작 완료"
 
 if [ "$#" -eq 0 ]; then
   set -- gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}" --workers 3 --timeout 120

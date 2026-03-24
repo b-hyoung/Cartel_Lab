@@ -42,3 +42,131 @@ export async function checkOut(latitude, longitude) {
   });
   return response.json();
 }
+
+export async function getTodayStatus() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/today/`, { headers });
+  return response.json();
+}
+
+export async function triggerAutoCheckout() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/auth/admin/api/auto-checkout/`, {
+    method: 'POST',
+    headers,
+  });
+  return response.json();
+}
+
+export async function getWeeklyAttendance(grade = '2', classGroup = '') {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams({ grade });
+  if (classGroup) params.append('class', classGroup);
+  const response = await fetch(`${BASE_URL}/auth/admin/api/weekly/?${params}`, { headers });
+  return response.json();
+}
+
+export async function getTimetable() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/timetable/api/`, { headers });
+  return response.json();
+}
+
+export async function registerPushToken(token) {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/register-push-token/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ token }),
+  });
+  return response.json();
+}
+
+export async function submitCheckoutRequest(requestedTime) {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/checkout-request/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ requested_time: requestedTime }),
+  });
+  return response.json();
+}
+
+export async function listCheckoutRequests() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/checkout-requests/`, { headers });
+  return response.json();
+}
+
+export async function approveCheckoutRequest(requestId) {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/checkout-request/${requestId}/approve/`, {
+    method: 'POST',
+    headers,
+  });
+  return response.json();
+}
+
+export async function rejectCheckoutRequest(requestId) {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/checkout-request/${requestId}/reject/`, {
+    method: 'POST',
+    headers,
+  });
+  return response.json();
+}
+
+export async function getMyStats() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/stats/`, { headers });
+  return response.json();
+}
+
+export async function getCurrentMembers() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/attendance/current/`, { headers });
+  return response.json();
+}
+
+export async function getMembers() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/users/api/members/`, { headers });
+  return response.json();
+}
+
+export async function getMonthlyStats() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/auth/admin/api/monthly/`, { headers });
+  return response.json();
+}
+
+export async function editAttendance(name, date, checkIn, checkOut) {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/auth/admin/api/edit-attendance/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ name, date, check_in: checkIn, check_out: checkOut }),
+  });
+  return response.json();
+}
+
+export async function getProfileImage() {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${BASE_URL}/users/api/profile-image/`, { headers });
+  return response.json();
+}
+
+export async function uploadProfileImage(imageUri) {
+  const token = await AsyncStorage.getItem('token');
+  const formData = new FormData();
+  const filename = imageUri.split('/').pop();
+  const ext = filename.split('.').pop().toLowerCase();
+  const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+  formData.append('image', { uri: imageUri, name: filename, type: mimeType });
+  const response = await fetch(`${BASE_URL}/users/api/profile-image/`, {
+    method: 'POST',
+    headers: { Authorization: `Token ${token}` },
+    body: formData,
+  });
+  return response.json();
+}
