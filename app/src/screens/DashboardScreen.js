@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -8,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getWeeklyAttendance } from '../api/client';
+import { getWeeklyAttendance, triggerAutoCheckout } from '../api/client';
 
 const STATUS_COLOR = {
   present: '#16a34a',
@@ -24,6 +25,20 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [classFilter, setClassFilter] = useState('');
+
+  const handleAutoCheckout = () => {
+    Alert.alert('퇴실시간 맞추기', '어제 미퇴실 인원을 오후 5시로 처리할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '처리',
+        onPress: async () => {
+          const res = await triggerAutoCheckout();
+          Alert.alert('완료', res.message || '처리됐습니다.');
+          if (res.count > 0) load(true);
+        },
+      },
+    ]);
+  };
 
   const load = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -45,7 +60,12 @@ export default function DashboardScreen() {
       style={s.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
     >
-      <Text style={s.title}>이번 주 출결</Text>
+      <View style={s.titleRow}>
+        <Text style={s.title}>이번 주 출결</Text>
+        <TouchableOpacity style={s.autoBtn} onPress={handleAutoCheckout}>
+          <Text style={s.autoBtnText}>퇴실시간 맞추기</Text>
+        </TouchableOpacity>
+      </View>
       {data && <Text style={s.sub}>{data.week_start} ~ {data.week_end}</Text>}
 
       {/* 반 필터 */}
@@ -90,6 +110,9 @@ export default function DashboardScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc', padding: 16, paddingTop: 60 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  autoBtn: { backgroundColor: '#111', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  autoBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#111', marginBottom: 4 },
   sub: { fontSize: 13, color: '#6b7280', marginBottom: 16 },

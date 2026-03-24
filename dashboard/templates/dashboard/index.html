@@ -418,6 +418,16 @@ td { padding: 12px 14px; vertical-align: middle; }
             <div class="settings-msg" id="locationMsg"></div>
         </div>
 
+        <!-- 퇴실 일괄 처리 -->
+        <div class="settings-panel">
+            <h2>미퇴실 일괄 처리</h2>
+            <p>어제 퇴실을 안 찍은 인원을 오후 5시로 처리합니다.</p>
+            <div class="settings-row">
+                <button class="settings-btn" id="autoCheckoutBtn">퇴실시간 맞추기</button>
+            </div>
+            <div class="settings-msg" id="autoCheckoutMsg"></div>
+        </div>
+
         <!-- 시간 설정 -->
         <div class="settings-panel">
             <h2>출결 시간 기준</h2>
@@ -577,6 +587,27 @@ document.getElementById('setTimeBtn').addEventListener('click', function () {
         msg.textContent = d.message;
         msg.className = 'settings-msg ' + (d.status === 'success' ? 'ok' : 'err');
         if (d.status === 'success') setTimeout(() => location.reload(), 1200);
+    })
+    .catch(() => { msg.textContent = '요청 실패'; msg.className = 'settings-msg err'; })
+    .finally(() => { btn.disabled = false; });
+});
+
+// 미퇴실 일괄 처리
+document.getElementById('autoCheckoutBtn').addEventListener('click', function () {
+    const btn = this;
+    const msg = document.getElementById('autoCheckoutMsg');
+    if (!confirm('어제 미퇴실 인원을 오후 5시로 처리할까요?')) return;
+    btn.disabled = true;
+    msg.textContent = '처리 중...';
+    fetch("{% url 'dashboard-api-auto-checkout' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    })
+    .then(r => r.json())
+    .then(d => {
+        msg.textContent = d.message;
+        msg.className = 'settings-msg ' + (d.status === 'ok' ? 'ok' : 'err');
+        if (d.count > 0) setTimeout(() => location.reload(), 1500);
     })
     .catch(() => { msg.textContent = '요청 실패'; msg.className = 'settings-msg err'; })
     .finally(() => { btn.disabled = false; });
