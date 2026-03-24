@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    api_auto_checkout,
     api_weekly_attendance,
     dashboard_cancel_delete,
     dashboard_confirm_delete,
@@ -16,4 +17,5 @@ urlpatterns = [
     path("student/<str:student_id>/cancel-delete/", dashboard_cancel_delete, name="dashboard-cancel-delete"),
     path("student/<str:student_id>/confirm-delete/", dashboard_confirm_delete, name="dashboard-confirm-delete"),
     path("api/weekly/", api_weekly_attendance, name="dashboard-api-weekly"),
+    path("api/auto-checkout/", api_auto_checkout, name="dashboard-api-auto-checkout"),
 ]

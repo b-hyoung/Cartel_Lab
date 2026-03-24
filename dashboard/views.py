@@ -113,6 +113,7 @@ def dashboard_index(request):
         deletion_scheduled_at__isnull=False,
     ).order_by("deletion_scheduled_at")
 
+
     # 1학년 선택 시 퀴즈 관리자 데이터 조회
     quiz_data = None
     if grade_filter == "1":
@@ -398,4 +399,37 @@ def api_weekly_attendance(request):
         "week_start": week_start.strftime("%m/%d"),
         "week_end": week_end.strftime("%m/%d"),
         "students": result,
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_auto_checkout(request):
+    """미퇴실 인원 오후 5시로 일괄 처리 (앱/웹 관리자용)"""
+    from datetime import datetime, time as dtime
+
+    user = _get_token_user(request)
+    # 앱(토큰) 또는 웹(세션) 모두 지원
+    if not user:
+        if request.user.is_authenticated:
+            user = request.user
+    if not user or not user.is_staff:
+        return JsonResponse({"error": "관리자 권한이 필요합니다."}, status=403)
+
+    target_date = timezone.localdate() - timedelta(days=1)
+    records = AttendanceRecord.objects.filter(
+        attendance_date=target_date,
+        check_out_at__isnull=True,
+    )
+    count = records.count()
+    if count == 0:
+        return JsonResponse({"status": "ok", "message": "처리할 미퇴실 기록이 없습니다."})
+
+    checkout_time = timezone.make_aware(datetime.combine(target_date, dtime(17, 0, 0)))
+    records.update(check_out_at=checkout_time)
+
+    return JsonResponse({
+        "status": "ok",
+        "message": f"{target_date.strftime('%m/%d')} 미퇴실 {count}명을 오후 5시로 처리했습니다.",
+        "count": count,
     })

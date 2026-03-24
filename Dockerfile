@@ -16,8 +16,8 @@ COPY . .
 # static 파일 수집
 RUN python manage.py collectstatic --noinput
 
-# 매일 오전 6시 자동 퇴실 처리 cron 등록
-RUN echo "0 6 * * * cd /app && python manage.py auto_check_out >> /var/log/auto_checkout.log 2>&1" | crontab -
+# 매일 한국시간 오전 6시 (UTC 21:00) 자동 퇴실 처리 cron 등록
+RUN echo "0 21 * * * cd /app && python manage.py auto_check_out >> /var/log/auto_checkout.log 2>&1" | crontab -
 
 # 실행 포트
 EXPOSE 8000
