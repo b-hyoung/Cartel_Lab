@@ -149,25 +149,29 @@ def check_in(request):
     except (ValueError, TypeError, json.JSONDecodeError):
         return JsonResponse({"status": "error", "message": "잘못된 위치 정보입니다."}, status=400)
 
-    location = _get_location_setting()
-    if not location:
-        return JsonResponse({"status": "error", "message": "설정된 출결 위치가 없습니다. 관리자에게 문의하세요."}, status=400)
-
-    distance = haversine_distance(user_lat, user_lon, location.latitude, location.longitude)
-
-    if distance > location.radius:
-        return JsonResponse({
-            "status": "error",
-            "message": f"위치 범위를 벗어났습니다. (현재 약 {int(distance)}m 거리)"
-        }, status=403)
-
     today = timezone.localdate()
     now_time = timezone.localtime().time()
 
-    time_setting = _get_time_setting()
-    status = "present"
-    if time_setting and now_time > time_setting.check_in_deadline:
-        status = "late"
+    if user.is_staff:
+        # 관리자는 위치/시간 제한 없이 출석 처리
+        status = "present"
+    else:
+        location = _get_location_setting()
+        if not location:
+            return JsonResponse({"status": "error", "message": "설정된 출결 위치가 없습니다. 관리자에게 문의하세요."}, status=400)
+
+        distance = haversine_distance(user_lat, user_lon, location.latitude, location.longitude)
+
+        if distance > location.radius:
+            return JsonResponse({
+                "status": "error",
+                "message": f"위치 범위를 벗어났습니다. (현재 약 {int(distance)}m 거리)"
+            }, status=403)
+
+        time_setting = _get_time_setting()
+        status = "present"
+        if time_setting and now_time > time_setting.check_in_deadline:
+            status = "late"
 
     record, created = AttendanceRecord.objects.get_or_create(
         user=user,
@@ -178,7 +182,9 @@ def check_in(request):
     if not created:
         return JsonResponse({"status": "info", "message": "이미 오늘 출석 완료되었습니다."})
 
-    if status == "present":
+    if user.is_staff:
+        msg = "관리자 출석 완료 (위치 무관)"
+    elif status == "present":
         msg = f"{location.name}에 출석 완료되었습니다!"
     else:
         deadline_str = time_setting.check_in_deadline.strftime('%H:%M') if time_setting else ""
