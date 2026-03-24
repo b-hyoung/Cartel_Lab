@@ -40,11 +40,16 @@ class User(AbstractUser):
         ("A", "A반"),
         ("B", "B반"),
     ]
+    GRADE_CHOICES = [
+        ("1", "1학년"),
+        ("2", "2학년"),
+    ]
 
     username = None
     student_id = models.CharField("학번", max_length=20, unique=True)
     name = models.CharField("이름", max_length=50)
     class_group = models.CharField("반", max_length=1, choices=CLASS_CHOICES, blank=True, default="")
+    grade = models.CharField("학년", max_length=1, choices=GRADE_CHOICES, default="2")
     github_url = models.URLField("GitHub 링크", blank=True, default="")
     desired_job_direction = models.CharField("희망 방향", max_length=120, blank=True, default="")
     desired_job_direction_other = models.CharField("기타 희망 방향", max_length=120, blank=True, default="")
@@ -62,6 +67,8 @@ class User(AbstractUser):
     ai_profile_error = models.TextField("AI 프로필 오류", blank=True, default="")
     daily_analysis_count = models.PositiveSmallIntegerField("일일 분석 횟수", default=0)
     daily_analysis_date = models.DateField("분석 횟수 기준일", null=True, blank=True)
+    deletion_scheduled_at = models.DateTimeField("삭제 예정 일시", null=True, blank=True)
+    expo_push_token = models.CharField("Expo 푸시 토큰", max_length=200, blank=True, default="")
 
     objects = UserManager()
 

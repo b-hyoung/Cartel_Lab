@@ -6,7 +6,7 @@ until python -c "
 import pymysql, os, sys, traceback
 
 host = os.getenv('DB_HOST') or 'db'
-user = os.getenv('DB_USER') or 'django'
+user = os.getenv('DB_USER') or 'root'
 password = os.getenv('DB_PASSWORD') or ''
 db = os.getenv('DB_NAME') or 'cartel_lab'
 raw_port = os.getenv('DB_PORT') or '3306'
@@ -46,6 +46,9 @@ echo "DB 연결 성공!"
 python manage.py migrate --noinput
 echo "migrate 완료"
 
+python manage.py loaddata timetable/fixtures/initial_timetable.json
+echo "시간표 fixture 로드 완료"
+
 python manage.py shell -c "
 import os
 from users.models import User
@@ -63,7 +66,11 @@ else:
     print('ADMIN_ID / ADMIN_PASSWORD 미설정, 건너뜀')
 "
 
-exec gunicorn config.wsgi:application \
-  --bind 0.0.0.0:${PORT:-8000} \
-  --workers 3 \
-  --timeout 120
+service cron start
+echo "cron 시작 완료"
+
+if [ "$#" -eq 0 ]; then
+  set -- gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}" --workers 3 --timeout 120
+fi
+
+exec "$@"

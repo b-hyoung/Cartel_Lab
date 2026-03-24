@@ -1,0 +1,333 @@
+/* Attendance Dashboard Styles */
+.attendance-dashboard {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+@media (max-width: 992px) {
+    .attendance-dashboard {
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 10px;
+        gap: 24px;
+    }
+    
+    .dashboard-left, .dashboard-right {
+        display: contents !important;
+    }
+    
+    /* 카드 순서 강제 지정 */
+    .my-attendance-card {
+        order: 1 !important;
+    }
+    
+    .others-attendance-card {
+        order: 2 !important;
+    }
+    
+    .recent-attendance-card {
+        order: 3 !important;
+    }
+}
+
+.dashboard-left {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    width: 100%;
+}
+.dashboard-right {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+.my-attendance-card, .recent-attendance-card, .others-attendance-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    width: 100%;
+}
+
+@media (max-width: 576px) {
+    .my-attendance-card, .recent-attendance-card, .others-attendance-card {
+        padding: 12px; /* 16px에서 축소 */
+    }
+    
+    /* 오늘의 출결 현황 높이 대폭 축소 */
+    .my-attendance-card {
+        padding: 12px 16px !important;
+    }
+    .my-attendance-card h2.my-name {
+        font-size: 16px; /* 18px에서 축소 */
+        margin-bottom: 8px; /* 12px에서 축소 */
+    }
+    .my-status-display {
+        margin-bottom: 8px; /* 16px에서 축소 */
+    }
+    .status-large {
+        font-size: 20px !important; /* 24px에서 축소 */
+        padding: 4px 16px !important; /* 8px 20px에서 축소 */
+    }
+    .my-time-info {
+        margin-bottom: 12px; /* 20px에서 축소 */
+        gap: 20px;
+    }
+    .time-label {
+        font-size: 11px; /* 12px에서 축소 */
+        margin-bottom: 2px;
+    }
+    .time-value {
+        font-size: 15px; /* 16px에서 축소 */
+    }
+    .center-actions {
+        margin-top: 4px;
+    }
+    .btn-primary, .btn-danger, .btn-secondary {
+        padding: 6px 14px !important; /* 8px 16px에서 축소 */
+        font-size: 13px !important; /* 14px에서 축소 */
+    }
+}
+
+.my-name {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.others-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.my-status-display {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.status-large {
+    font-size: 32px;
+    font-weight: 800;
+    padding: 10px 30px;
+    border-radius: 12px;
+}
+
+@media (max-width: 576px) {
+    .status-large {
+        font-size: 24px;
+        padding: 8px 20px;
+    }
+}
+
+.status-absent { background: #f1f3f5; color: #868e96; }
+.status-present { background: #e6fcf5; color: #0ca678; }
+.status-late { background: #fff9db; color: #f08c00; }
+.status-leave { background: #e7f5ff; color: #1c7ed6; }
+
+.my-time-info {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 576px) {
+    .my-time-info {
+        gap: 20px;
+    }
+}
+
+.time-block {
+    text-align: center;
+}
+.time-label {
+    display: block;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+.time-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.center-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.recent-attendance-card h3 {
+    margin-bottom: 20px;
+}
+
+.heatmap-wrapper {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden; /* 모바일에서 삐져나오는 것 방지 */
+}
+
+.heatmap-months {
+    display: flex;
+    margin-left: 28px; /* 20px(days width) + 8px(gap) = 28px */
+    margin-bottom: 5px;
+    font-size: 10px;
+    color: var(--muted);
+    position: relative;
+    height: 15px;
+}
+
+.month-label {
+    position: absolute;
+    white-space: nowrap;
+}
+
+.heatmap-body {
+    display: flex;
+    gap: 8px;
+}
+
+.heatmap-days {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--muted);
+    width: 20px; /* 15px에서 20px로 증가 */
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.heatmap-days span {
+    height: 11px;
+    line-height: 11px;
+    display: block;
+}
+
+.heatmap-container {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    flex-grow: 1;
+    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+}
+
+/* 스크롤바 스타일링 (선택사항) */
+.heatmap-container::-webkit-scrollbar {
+    height: 4px;
+}
+.heatmap-container::-webkit-scrollbar-thumb {
+    background: #e0e0e0;
+    border-radius: 2px;
+}
+
+.heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.heatmap-cell {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    background-color: #ebedf0;
+    flex-shrink: 0;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-wrap: wrap;
+}
+
+.status-present-color { background-color: #40c463; }
+.status-late-color { background-color: #fab005; }
+.status-leave-color { background-color: #339af0; }
+.status-absent-color { background-color: #ebedf0; }
+
+.status-late-leave-color {
+    background: linear-gradient(to right, #fab005 50%, #339af0 50%);
+}
+
+.status-present-leave-color {
+    background: linear-gradient(to right, #40c463 50%, #339af0 50%);
+}
+
+.status-late-present-color {
+    background: linear-gradient(to right, #fab005 50%, #40c463 50%);
+}
+
+.btn-primary {
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+}
+.btn-primary:hover {
+    background: #e15900;
+}
+.btn-secondary {
+    background: #f1f2f4;
+    color: var(--text);
+    border: 1px solid var(--line);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+    margin-right: 10px;
+}
+.btn-secondary:hover {
+    background: #e1e2e4;
+}
+.btn-danger {
+    background: #fa5252;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+}
+.btn-danger:hover {
+    background: #e03131;
+}
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+}
+.status-message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 8px;
+    display: none;
+}
+.status-success { background: #e6fcf5; color: #0ca678; display: block; }
+.status-error { background: #fff5f5; color: #fa5252; display: block; }
+.status-info { background: #e7f5ff; color: #228be6; display: block; }
+.loading { color: var(--muted); text-align: center; padding: 20px; }
