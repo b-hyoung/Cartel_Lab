@@ -264,15 +264,18 @@ export default function AttendanceScreen({ name, onLogout }) {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
       }
     }
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '출석 체크 잊지 마세요! 📋',
-        body: '오늘도 연구실 출석 체크 해주세요.',
-        sound: 'default',
-        data: { type: 'morning_reminder' },
-      },
-      trigger: { type: 'weekly', weekday: 2, hour: 9, minute: 30, repeats: true },
-    });
+    // 월(2) ~ 금(6) 매일 9:50 알림
+    for (const weekday of [2, 3, 4, 5, 6]) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '출석 체크 잊지 마세요! 📋',
+          body: '오늘도 랩실 출석 체크 해주세요.',
+          sound: 'default',
+          data: { type: 'morning_reminder' },
+        },
+        trigger: { type: 'weekly', weekday, hour: 9, minute: 50, repeats: true },
+      });
+    }
   };
 
   const handleLogout = async () => {
