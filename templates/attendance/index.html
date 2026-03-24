@@ -476,34 +476,6 @@
     if (checkInBtn) {
         checkInBtn.addEventListener('click', function() {
             const btn = this;
-            btn.disabled = true;
-            btn.textContent = '출석 처리 중...';
-            statusDiv.style.display = 'none';
-
-            fetch("{% url 'attendance:check-in' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                showMessage(data.status, data.message);
-                if (data.status === 'success') {
-                    htmx.trigger('#attendanceList', 'load');
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-                btn.disabled = false;
-                btn.textContent = '출석체크 하기';
-            })
-            .catch(error => {
-                showMessage('error', '서버 통신 중 오류가 발생했습니다.');
-                btn.disabled = false;
-                btn.textContent = '출석체크 하기';
-            });
-            return;
         
         btn.disabled = true;
         btn.textContent = '위치 확인 중...';
@@ -565,36 +537,6 @@
     if (checkOutBtn) {
         checkOutBtn.addEventListener('click', function() {
             const btn = this;
-            if (!confirm('퇴실 처리를 하시겠습니까?')) return;
-
-            btn.disabled = true;
-            btn.textContent = '퇴실 처리 중...';
-            statusDiv.style.display = 'none';
-
-            fetch("{% url 'attendance:check-out' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                showMessage(data.status, data.message);
-                if (data.status === 'success') {
-                    htmx.trigger('#attendanceList', 'load');
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-                btn.disabled = false;
-                btn.textContent = '퇴실하기';
-            })
-            .catch(error => {
-                showMessage('error', '서버 통신 중 오류가 발생했습니다.');
-                btn.disabled = false;
-                btn.textContent = '퇴실하기';
-            });
-            return;
         
         if (!confirm('퇴실 처리를 하시겠습니까?')) return;
 
