@@ -223,7 +223,7 @@ if CF_R2_BUCKET_NAME and CF_R2_ACCOUNT_ID:
             'access_key': CF_R2_ACCESS_KEY_ID,
             'secret_key': CF_R2_SECRET_ACCESS_KEY,
             'endpoint_url': f'https://{CF_R2_ACCOUNT_ID}.r2.cloudflarestorage.com',
-            'custom_domain': CF_R2_PUBLIC_URL.replace('https://', '') if CF_R2_PUBLIC_URL else None,
+            'custom_domain': CF_R2_PUBLIC_URL.replace('https://', '').rstrip('/') if CF_R2_PUBLIC_URL else None,
             'file_overwrite': False,
             'querystring_auth': False,
         },
