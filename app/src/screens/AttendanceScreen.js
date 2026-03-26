@@ -2,8 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -105,15 +104,9 @@ export default function AttendanceScreen({ name, onLogout }) {
     getProfileImage().then(res => { if (res.profile_image) setProfileImage(res.profile_image); }).catch(() => {});
     getDailyGoal().then(res => { if (res.id) setTodayGoal(res); }).catch(() => {});
     getWeeklyAchievement().then(res => { if (res.days) setWeeklyAchievement(res); }).catch(() => {});
+    getDailyTodos().then(res => { if (res.todos) setTodayTodos(res.todos); }).catch(() => {});
     scheduleMorningReminder();
   }, []);
-
-  // 탭 포커스 시마다 오늘 할일 새로고침 (TodoScreen에서 돌아올 때 반영)
-  useFocusEffect(
-    useCallback(() => {
-      getDailyTodos().then(res => { if (res.todos) setTodayTodos(res.todos); }).catch(() => {});
-    }, [])
-  );
 
   const loadTodayStatus = () => {
     getTodayStatus().then(res => {
