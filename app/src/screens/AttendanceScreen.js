@@ -146,7 +146,7 @@ export default function AttendanceScreen({ name, onLogout }) {
         sound: 'default',
         data: { type: 'checkout_reminder' },
       },
-      trigger: { type: 'timeInterval', seconds: Math.floor((tonight10 - new Date()) / 1000) },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.floor((tonight10 - new Date()) / 1000) },
     });
   };
 
@@ -303,7 +303,7 @@ export default function AttendanceScreen({ name, onLogout }) {
           body: '좋은 하루 되세요!',
           sound: 'default',
         },
-        trigger: { type: 'timeInterval', seconds: 4 },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 4 },
       });
       Alert.alert('알림 예약', '4초 후 알림이 옵니다. 지금 홈으로 내려주세요!');
     } catch (e) {
@@ -329,7 +329,7 @@ export default function AttendanceScreen({ name, onLogout }) {
           sound: 'default',
           data: { type: 'morning_reminder' },
         },
-        trigger: { type: 'weekly', weekday, hour: 9, minute: 50, repeats: true },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday, hour: 9, minute: 50 },
       });
     }
   };
