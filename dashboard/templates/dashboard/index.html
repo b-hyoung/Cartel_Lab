@@ -314,7 +314,7 @@ td { padding: 12px 14px; vertical-align: middle; }
                     <td class="date-col" {% if forloop.counter0 == today.weekday %}data-today="1"{% endif %}>
                         <div class="cell-block badge-{{ cell.color }}{% if cell.editable %} cell-editable{% endif %}"
                              {% if cell.editable %}
-                             onclick="openEditModal('{{ row.student.pk }}','{{ row.student.name }}','{{ cell.date_str }}','{{ cell.check_in_at|time:"H:i" }}','{{ cell.check_out_at|time:"H:i" }}','{{ cell.label }}')"
+                             onclick="openEditModal(this,'{{ row.student.pk }}','{{ row.student.name }}','{{ cell.date_str }}','{{ cell.check_in_at|time:"H:i" }}','{{ cell.check_out_at|time:"H:i" }}','{{ cell.label }}')"
                              title="클릭하여 시간 수정"
                              {% endif %}>
                             <span class="cell-face cell-label">
@@ -719,7 +719,12 @@ document.getElementById('autoCheckoutBtn').addEventListener('click', function ()
 });
 
 // ── 출결 시간 수정 모달 ──────────────────────────────────────────
-function openEditModal(studentPk, name, dateStr, ci, co, label) {
+const STATUS_COLOR_MAP = { present:'badge-green', late:'badge-yellow', leave:'badge-orange', absent:'badge-red' };
+const STATUS_LABEL_MAP = { present:'출석', late:'지각', leave:'조퇴', absent:'결석' };
+let _editTargetEl = null;
+
+function openEditModal(el, studentPk, name, dateStr, ci, co, label) {
+    _editTargetEl = el;
     const m = document.getElementById('editAttModal');
     document.getElementById('editAttName').textContent = name;
     document.getElementById('editAttDate').textContent = dateStr;
@@ -727,7 +732,6 @@ function openEditModal(studentPk, name, dateStr, ci, co, label) {
     document.getElementById('editAttDateVal').value = dateStr;
     document.getElementById('editAttCi').value = ci || '';
     document.getElementById('editAttCo').value = co || '';
-    // 상태 셀렉트 기본값
     const statusMap = {'출석':'present','지각':'late','결석':'absent','조퇴':'leave'};
     document.getElementById('editAttStatus').value = statusMap[label] || 'present';
     document.getElementById('editAttMsg').textContent = '';
@@ -735,6 +739,7 @@ function openEditModal(studentPk, name, dateStr, ci, co, label) {
 }
 function closeEditModal() {
     document.getElementById('editAttModal').classList.remove('open');
+    _editTargetEl = null;
 }
 document.getElementById('editAttModal').addEventListener('click', function(e) {
     if (e.target === this) closeEditModal();
@@ -745,15 +750,18 @@ document.getElementById('editAttForm').addEventListener('submit', function(e) {
     const msg = document.getElementById('editAttMsg');
     btn.disabled = true;
     btn.textContent = '저장 중…';
+    const status = document.getElementById('editAttStatus').value;
+    const ci = document.getElementById('editAttCi').value;
+    const co = document.getElementById('editAttCo').value;
     fetch("{% url 'dashboard-api-edit-att' %}", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
         body: JSON.stringify({
             student_pk: document.getElementById('editAttPk').value,
             date: document.getElementById('editAttDateVal').value,
-            check_in: document.getElementById('editAttCi').value,
-            check_out: document.getElementById('editAttCo').value,
-            status: document.getElementById('editAttStatus').value,
+            check_in: ci,
+            check_out: co,
+            status: status,
         }),
     })
     .then(r => r.json())
@@ -761,7 +769,25 @@ document.getElementById('editAttForm').addEventListener('submit', function(e) {
         if (d.status === 'ok') {
             msg.textContent = '저장 완료!';
             msg.style.color = '#16a34a';
-            setTimeout(() => { closeEditModal(); location.reload(); }, 800);
+            // DOM 직접 업데이트
+            if (_editTargetEl) {
+                const el = _editTargetEl;
+                // 배지 색상 변경
+                el.className = el.className.replace(/badge-\w+/, STATUS_COLOR_MAP[status] || 'badge-gray');
+                // 라벨 업데이트
+                const labelSpan = el.querySelector('.cell-label');
+                if (labelSpan) labelSpan.innerHTML = `<span class="cell-dot"></span>${STATUS_LABEL_MAP[status] || status}`;
+                // 시간 업데이트
+                const timesSpan = el.querySelector('.cell-times');
+                if (timesSpan) {
+                    const t = [d.check_in, d.check_out].filter(Boolean).join(' · ');
+                    timesSpan.innerHTML = `<span class="cell-dot"></span>${t || (STATUS_LABEL_MAP[status] || status)}`;
+                }
+                // onclick 데이터도 갱신
+                el.setAttribute('onclick', el.getAttribute('onclick')
+                    .replace(/'[^']*','[^']*','[^']*'\)$/, `'${d.check_in}','${d.check_out}','${STATUS_LABEL_MAP[status]}')`));
+            }
+            setTimeout(() => closeEditModal(), 600);
         } else {
             msg.textContent = d.error || '오류';
             msg.style.color = '#dc2626';
