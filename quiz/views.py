@@ -56,23 +56,11 @@ def index(request):
     today = timezone.localdate()
 
     if request.user.grade == "1":
-        # 오늘의 퀴즈 1개만 — 날짜 기준 캐시 (자정까지 유지)
-        quiz_cache_key = f"quiz_today_{today}"
-        today_quiz = cache.get(quiz_cache_key)
-        if today_quiz is None:
-            today_quiz = (
-                Quiz.objects.filter(scheduled_date=today)
-                .select_related("created_by")
-                .first()
-            )
-            # 자정까지 남은 초 계산
-            now = timezone.localtime()
-            seconds_until_midnight = (
-                (24 - now.hour) * 3600 - now.minute * 60 - now.second
-            )
-            cache.set(quiz_cache_key, today_quiz or False, seconds_until_midnight)
-        if today_quiz is False:
-            today_quiz = None
+        today_quiz = (
+            Quiz.objects.filter(scheduled_date=today)
+            .select_related("created_by")
+            .first()
+        )
         attempt = None
         if today_quiz:
             attempt = QuizAttempt.objects.filter(
