@@ -14,6 +14,7 @@
     var liveAlert = document.getElementById("certLiveAlert");
     var liveAlertList = document.getElementById("certLiveAlertList");
     var apiUrl = app.dataset.certificationsApiUrl || "/certifications/api/important/";
+    var plannerGoalUrl = app.dataset.certificationsPlannerGoalUrl || "";
     var selectedStorageKey = "certifications-selected-slug";
     var favoritesStorageKey = "certifications-favorites-v1";
     var knownSchedulesStorageKey = "certifications-known-schedules-v1";
@@ -39,6 +40,120 @@
         design: { label: "\ub514\uc790\uc778" },
         security: { label: "\ubcf4\uc548" }
     };
+    var HANGUL_SYLLABLE_BASE = 44032;
+    var HANGUL_SYLLABLE_END = 55203;
+    var CHOSEONG_LIST = [
+        "\u3131", "\u3132", "\u3134", "\u3137", "\u3138",
+        "\u3139", "\u3141", "\u3142", "\u3143", "\u3145",
+        "\u3146", "\u3147", "\u3148", "\u3149", "\u314a",
+        "\u314b", "\u314c", "\u314d", "\u314e"
+    ];
+    var SEARCH_ALIASES_BY_SLUG = {
+        "information-processing-industrial": [
+            "정보 처리 산업 기사",
+            "정보 처리 산업기사",
+            "정처산기"
+        ],
+        "bigdata-analysis-engineer": [
+            "빅 데이터 분석 기사",
+            "빅데이터 분석 기사",
+            "빅분기"
+        ],
+        "bigdata-dataq": [
+            "빅 데이터 분석 기사",
+            "빅데이터 분석 기사",
+            "빅분기"
+        ],
+        "adp": [
+            "데이터 분석 전문가",
+            "데이터분석전문가",
+            "데분전"
+        ],
+        "adsp": [
+            "데이터 분석 준전문가",
+            "데이터분석준전문가",
+            "데분준"
+        ],
+        "sqld": [
+            "sql 개발자",
+            "sql 개발 자격"
+        ],
+        "sqlp": [
+            "sql 전문가",
+            "sql 전문 자격"
+        ],
+        "dap": [
+            "데이터 아키텍처 전문가",
+            "데이터아키텍처전문가",
+            "데아전"
+        ],
+        "dasp": [
+            "데이터 아키텍처 준전문가",
+            "데이터아키텍처준전문가",
+            "데아준"
+        ],
+        "ai-literacy": [
+            "ai 활용 능력",
+            "인공지능 활용 능력"
+        ],
+        "prompt-engineer": [
+            "프롬프트 엔지니어",
+            "ai 프롬프트",
+            "프롬프트 자격증"
+        ],
+        "linux-master": [
+            "리눅스 마스터",
+            "리눅마"
+        ],
+        "information-security-engineer": [
+            "정보 보안 기사",
+            "정보보안 기사"
+        ],
+        "web-design-craftsman": [
+            "웹 디자인 기능사",
+            "웹디자인 기능사"
+        ],
+        "computer-specialist": [
+            "컴퓨터 활용 능력",
+            "컴퓨터활용능력",
+            "컴활"
+        ],
+        "digital-forensics": [
+            "디지털 포렌식 전문가",
+            "디지털포렌식전문가",
+            "디포전"
+        ],
+        "ai-pot": [
+            "ai pot",
+            "aipot",
+            "ai 프롬프트 활용 능력",
+            "ai프롬프트활용능력"
+        ],
+        "aibt": [
+            "ai 비즈니스 활용 능력",
+            "ai비즈니스활용능력"
+        ],
+        "gtq-ai": [
+            "gtq ai",
+            "gtqai"
+        ],
+        "sw-coding": [
+            "sw 코딩 자격",
+            "sw코딩 자격"
+        ],
+        "dsac": [
+            "데이터 사이언티스트 능력 인증 자격",
+            "데이터사이언티스트능력인증자격"
+        ],
+        "deq": [
+            "데이터 윤리 자격",
+            "데이터윤리자격"
+        ],
+        "itq": [
+            "정보 기술 자격",
+            "정보기술자격"
+        ]
+    };
 
     if (!detailPanel || !selectorList || !pinnedList || !searchInput || !liveAlert || !liveAlertList || !certModal || !calendarModal || !calendarSelect || !calendarCopy || !calendarFeedback || !calendarSubmitButton) {
         return;
@@ -57,6 +172,10 @@
         try {
             localStorage.setItem(favoritesStorageKey, JSON.stringify(values));
         } catch (error) {}
+
+        window.dispatchEvent(new CustomEvent("certifications:favorites-updated", {
+            detail: { favorites: values.slice() }
+        }));
     }
 
     function readSelectedSlug() {
@@ -130,13 +249,22 @@
         return [year, month, day].join("-");
     }
 
+    function getTodayIsoDate() {
+        var today = new Date();
+        var year = String(today.getFullYear());
+        var month = String(today.getMonth() + 1).padStart(2, "0");
+        var day = String(today.getDate()).padStart(2, "0");
+        return [year, month, day].join("-");
+    }
+
     function getCalendarCandidates(item) {
         var candidates = [];
         var seen = {};
+        var todayIso = getTodayIsoDate();
         var fieldMeta = [
-            { key: "exam_date", label: "?쒗뿕" },
-            { key: "written_exam", label: "?꾧린 ?쒗뿕" },
-            { key: "practical_exam", label: "?ㅺ린 ?쒗뿕" }
+            { key: "exam_date", label: "\uc2dc\ud5d8" },
+            { key: "written_exam", label: "\ud544\uae30 \uc2dc\ud5d8" },
+            { key: "practical_exam", label: "\uc2e4\uae30 \uc2dc\ud5d8" }
         ];
 
         (item.schedules || []).forEach(function (schedule, scheduleIndex) {
@@ -144,8 +272,9 @@
                 var rawValue = schedule[field.key];
                 var isoDate = extractDateValue(rawValue);
                 if (!isoDate) return;
+                if (isoDate < todayIso) return;
 
-                var roundLabel = schedule.round || "?쇱젙 " + String(scheduleIndex + 1);
+                var roundLabel = schedule.round || "\uc77c\uc815 " + String(scheduleIndex + 1);
                 var label = roundLabel + " " + field.label;
                 var dedupeKey = [isoDate, label].join("|");
                 if (seen[dedupeKey]) return;
@@ -206,6 +335,58 @@
             seen[key] = true;
             return true;
         });
+    }
+
+    function normalizeSearchText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function compactSearchText(value) {
+        return normalizeSearchText(value).replace(/[\s\-_/()[\]{}.,:+]+/g, "");
+    }
+
+    function extractChoseong(value) {
+        var normalized = normalizeSearchText(value);
+        var result = "";
+
+        for (var index = 0; index < normalized.length; index += 1) {
+            var char = normalized.charAt(index);
+            var code = char.charCodeAt(0);
+
+            if (code >= HANGUL_SYLLABLE_BASE && code <= HANGUL_SYLLABLE_END) {
+                result += CHOSEONG_LIST[Math.floor((code - HANGUL_SYLLABLE_BASE) / 588)];
+                continue;
+            }
+
+            if (/[ㄱ-ㅎa-z0-9]/.test(char)) {
+                result += char;
+            }
+        }
+
+        return result;
+    }
+
+    function getSearchAliases(item) {
+        if (!item) return [];
+        return SEARCH_ALIASES_BY_SLUG[item.slug] || [];
+    }
+
+    function buildSearchIndex(item) {
+        var text = [
+            item && item.name,
+            item && item.short_name,
+            item && item.source,
+            item && item.description
+        ].concat(getSearchAliases(item)).join(" ");
+
+        return {
+            normalized: normalizeSearchText(text),
+            compact: compactSearchText(text),
+            choseong: extractChoseong(text)
+        };
     }
 
     function displayName(item) {
@@ -387,10 +568,62 @@
         }).join("||");
     }
 
+    function getPrimaryScheduleEntry(item) {
+        var todayIso = getTodayIsoDate();
+        var fieldPriority = {
+            exam_date: 0,
+            written_exam: 1,
+            practical_exam: 2,
+            registration: 3,
+            written_registration: 4,
+            practical_registration: 5,
+        };
+        var fallbackEntry = null;
+        var candidates = [];
+
+        (item && item.schedules || []).forEach(function (schedule) {
+            [
+                "exam_date",
+                "written_exam",
+                "practical_exam",
+                "registration",
+                "written_registration",
+                "practical_registration"
+            ].forEach(function (fieldKey) {
+                var rawValue = schedule[fieldKey];
+                var isoDate = extractDateValue(rawValue);
+                if (!rawValue || !isoDate) return;
+
+                var entry = {
+                    date: isoDate,
+                    rawValue: rawValue,
+                    priority: fieldPriority[fieldKey] !== undefined ? fieldPriority[fieldKey] : 99
+                };
+
+                if (!fallbackEntry || entry.date < fallbackEntry.date || (entry.date === fallbackEntry.date && entry.priority < fallbackEntry.priority)) {
+                    fallbackEntry = entry;
+                }
+
+                if (isoDate >= todayIso) {
+                    candidates.push(entry);
+                }
+            });
+        });
+
+        if (candidates.length) {
+            candidates.sort(function (left, right) {
+                if (left.date !== right.date) return left.date.localeCompare(right.date);
+                return left.priority - right.priority;
+            });
+            return candidates[0];
+        }
+
+        return fallbackEntry;
+    }
+
     function formatPrimarySchedule(item) {
-        var schedule = (item && item.schedules && item.schedules[0]) || null;
-        if (!schedule) return "일정 업데이트 대기";
-        return schedule.exam_date || schedule.written_exam || schedule.practical_exam || schedule.registration || "일정 업데이트 대기";
+        var primaryEntry = getPrimaryScheduleEntry(item);
+        return primaryEntry ? primaryEntry.rawValue : "일정 업데이트 대기";
     }
 
     function renderDifficultyDots(score) {
@@ -729,7 +962,7 @@
         var candidates = getCalendarCandidates(item);
 
         selectedCalendarSlug = item && item.slug ? item.slug : "";
-        calendarCopy.textContent = displayName(item) + " 시험 일정을 플래너 캘린더용 후보로 확인할 수 있습니다.";
+        calendarCopy.textContent = displayName(item) + " 시험 일정을 오늘의 계획에 바로 추가할 수 있습니다.";
         calendarSelect.innerHTML = candidates.map(function (candidate) {
             return '<option value="' + escapeHtml(candidate.date) + '" data-label="' + escapeHtml(candidate.label) + '">' +
                 escapeHtml(candidate.label + " - " + candidate.display) +
@@ -737,7 +970,7 @@
         }).join("");
         calendarSelect.disabled = !candidates.length;
         calendarSubmitButton.disabled = !candidates.length;
-        setCalendarFeedback(candidates.length ? "" : "異붽??????덈뒗 ?쒗뿕 ?좎쭨媛 ?놁뒿?덈떎.", candidates.length ? "" : "error");
+        setCalendarFeedback(candidates.length ? "" : "오늘 이후에 추가할 수 있는 시험 날짜가 없습니다.", candidates.length ? "" : "error");
 
         calendarModal.classList.add("is-open");
         calendarModal.setAttribute("aria-hidden", "false");
@@ -781,17 +1014,61 @@
             setCalendarFeedback("시험 날짜를 먼저 선택해주세요.", "error");
             return;
         }
+        if (!plannerGoalUrl) {
+            setCalendarFeedback("플래너 연결 주소를 찾지 못했습니다.", "error");
+            return;
+        }
 
         calendarSubmitButton.disabled = true;
-        setCalendarFeedback("캘린더 연결은 잠시 보류 중입니다.", "pending");
+        setCalendarFeedback("오늘의 계획에 추가하는 중입니다.", "pending");
 
-        window.setTimeout(function () {
-            setCalendarFeedback(
-                displayName(item) + " " + selectedLabel + " 날짜를 확인했습니다. 저장 연결은 다음 작업에서 이어갈 예정입니다.",
-                "success"
-            );
-            calendarSubmitButton.disabled = false;
-        }, 250);
+        fetch(plannerGoalUrl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new URLSearchParams({
+                target_date: selectedDate,
+                certification_name: displayName(item),
+                schedule_label: selectedLabel,
+                color: "yellow"
+            })
+        })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    return {};
+                }).then(function (payload) {
+                    return { ok: response.ok, status: response.status, payload: payload };
+                });
+            })
+            .then(function (result) {
+                if (result.status === 401 && result.payload && result.payload.login_url) {
+                    window.location.href = result.payload.login_url;
+                    return;
+                }
+
+                if (!result.ok) {
+                    throw new Error(result.payload && result.payload.message ? result.payload.message : "플래너 추가에 실패했습니다.");
+                }
+
+                setCalendarFeedback(
+                    (result.payload.message || "오늘의 계획에 추가되었습니다.") +
+                    " 계획/목표에서 " + selectedDate + " 날짜를 확인해보세요.",
+                    "success"
+                );
+                window.setTimeout(function () {
+                    closeCalendarModal();
+                }, 900);
+            })
+            .catch(function (error) {
+                setCalendarFeedback(error && error.message ? error.message : "플래너 추가에 실패했습니다.", "error");
+            })
+            .finally(function () {
+                if (!calendarModal.classList.contains("is-open")) return;
+                calendarSubmitButton.disabled = false;
+            });
     }
     function matchesFilter(item) {
         if (currentFilter === "favorites") return favoritesSet().has(item.slug);
@@ -804,12 +1081,18 @@
     }
 
     function matchesSearch(item) {
-        var keyword = (searchInput.value || "").trim().toLowerCase();
+        var keyword = normalizeSearchText(searchInput.value);
         if (!keyword) return true;
-        return [item.name, item.short_name, item.source, item.description]
-            .join(" ")
-            .toLowerCase()
-            .indexOf(keyword) !== -1;
+
+        var searchIndex = buildSearchIndex(item);
+        var compactKeyword = compactSearchText(keyword);
+        var choseongKeyword = extractChoseong(keyword);
+
+        return (
+            searchIndex.normalized.indexOf(keyword) !== -1 ||
+            (compactKeyword && searchIndex.compact.indexOf(compactKeyword) !== -1) ||
+            (choseongKeyword && searchIndex.choseong.indexOf(choseongKeyword) !== -1)
+        );
     }
 
     function matchesCategory(item) {
