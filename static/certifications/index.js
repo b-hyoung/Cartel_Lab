@@ -5,6 +5,9 @@
     var detailPanel = document.getElementById("certDetailPanel");
     var selectorList = document.getElementById("certSelectorList");
     var pinnedList = document.getElementById("certPinnedList");
+    var pinnedBrowser = document.getElementById("certPinnedBrowser");
+    var pinnedToggle = document.getElementById("certPinnedToggle");
+    var pinnedToggleLabel = pinnedToggle ? pinnedToggle.querySelector("[data-cert-accordion-label]") : null;
     var statsPanel = document.getElementById("certStats");
     var certModal = document.getElementById("certModal");
     var certModalExternalLink = document.getElementById("certModalExternalLink");
@@ -237,6 +240,23 @@
         }) || null;
     }
 
+    function setPinnedBrowserExpanded(isExpanded) {
+        if (!pinnedBrowser || !pinnedToggle) return;
+
+        pinnedBrowser.classList.toggle("is-expanded", !!isExpanded);
+        pinnedBrowser.classList.toggle("is-collapsed", !isExpanded);
+        pinnedToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+
+        if (pinnedToggleLabel) {
+            pinnedToggleLabel.textContent = isExpanded ? "접기" : "열기";
+        }
+    }
+
+    function togglePinnedBrowser() {
+        if (!pinnedBrowser) return;
+        setPinnedBrowserExpanded(pinnedBrowser.classList.contains("is-collapsed"));
+    }
+
     function extractDateValue(rawValue) {
         if (!rawValue) return "";
         var normalized = String(rawValue).replace(/\s+/g, " ");
@@ -262,9 +282,12 @@
         var seen = {};
         var todayIso = getTodayIsoDate();
         var fieldMeta = [
-            { key: "exam_date", label: "\uc2dc\ud5d8" },
-            { key: "written_exam", label: "\ud544\uae30 \uc2dc\ud5d8" },
-            { key: "practical_exam", label: "\uc2e4\uae30 \uc2dc\ud5d8" }
+            { key: "registration", label: "\uc811\uc218", priority: 0 },
+            { key: "written_registration", label: "\ud544\uae30 \uc811\uc218", priority: 1 },
+            { key: "practical_registration", label: "\uc2e4\uae30 \uc811\uc218", priority: 2 },
+            { key: "exam_date", label: "\uc2dc\ud5d8", priority: 10 },
+            { key: "written_exam", label: "\ud544\uae30 \uc2dc\ud5d8", priority: 11 },
+            { key: "practical_exam", label: "\uc2e4\uae30 \uc2dc\ud5d8", priority: 12 }
         ];
 
         (item.schedules || []).forEach(function (schedule, scheduleIndex) {
@@ -283,13 +306,15 @@
                 candidates.push({
                     date: isoDate,
                     label: label,
-                    display: rawValue
+                    display: rawValue,
+                    priority: field.priority
                 });
             });
         });
 
         return candidates.sort(function (left, right) {
-            return left.date.localeCompare(right.date);
+            if (left.date !== right.date) return left.date.localeCompare(right.date);
+            return left.priority - right.priority;
         });
     }
 
@@ -461,12 +486,25 @@
         });
     }
 
+    function getStatusLabel(status) {
+        if (!status || !status.code) return "상태 확인 필요";
+        if (status.code === "today") return "D-DAY";
+        if ((status.code === "urgent" || status.code === "soon" || status.code === "upcoming") && typeof status.days_left === "number") {
+            return "D-" + String(status.days_left);
+        }
+        if (status.code === "open") return "접수 진행 중";
+        if (status.code === "closed") return "접수 마감";
+        if (status.code === "passed") return "시험 종료";
+        if (status.code === "unknown") return "상태 확인 필요";
+        return status.label || "상태 확인 필요";
+    }
+
     function getExamStatuses(item) {
         var statuses = [];
         (item.schedules || []).forEach(function (schedule) {
             [schedule.exam_status, schedule.written_exam_status, schedule.practical_exam_status].forEach(function (status) {
                 if (status && status.code) {
-                    statuses.push(status);
+                    statuses.push(Object.assign({}, status, { label: getStatusLabel(status) }));
                 }
             });
         });
@@ -475,7 +513,7 @@
 
     function getUrgency(item) {
         var priority = { today: 4, urgent: 3, soon: 2, upcoming: 1, passed: 0, unknown: 0 };
-        var best = { code: "unknown", label: "?쇱젙 ?뺤씤 ?꾩슂" };
+        var best = { code: "unknown", label: "일정 확인 필요" };
 
         getExamStatuses(item).forEach(function (status) {
             if ((priority[status.code] || 0) > (priority[best.code] || 0)) {
@@ -570,60 +608,83 @@
 
     function getPrimaryScheduleEntry(item) {
         var todayIso = getTodayIsoDate();
-        var fieldPriority = {
-            exam_date: 0,
-            written_exam: 1,
-            practical_exam: 2,
-            registration: 3,
-            written_registration: 4,
-            practical_registration: 5,
-        };
-        var fallbackEntry = null;
-        var candidates = [];
+        var registrationFields = [
+            { key: "registration", label: "접수", priority: 0 },
+            { key: "written_registration", label: "필기 접수", priority: 1 },
+            { key: "practical_registration", label: "실기 접수", priority: 2 }
+        ];
+        var examFields = [
+            { key: "exam_date", label: "시험", priority: 10 },
+            { key: "written_exam", label: "필기 시험", priority: 11 },
+            { key: "practical_exam", label: "실기 시험", priority: 12 }
+        ];
+        var futureRegistrationEntries = [];
+        var futureExamEntries = [];
+        var fallbackRegistrationEntry = null;
+        var fallbackExamEntry = null;
 
-        (item && item.schedules || []).forEach(function (schedule) {
-            [
-                "exam_date",
-                "written_exam",
-                "practical_exam",
-                "registration",
-                "written_registration",
-                "practical_registration"
-            ].forEach(function (fieldKey) {
-                var rawValue = schedule[fieldKey];
+        function updateFallback(currentEntry, nextEntry) {
+            if (!currentEntry) return nextEntry;
+            if (nextEntry.date < currentEntry.date) return nextEntry;
+            if (nextEntry.date === currentEntry.date && nextEntry.priority < currentEntry.priority) return nextEntry;
+            return currentEntry;
+        }
+
+        function collectEntries(schedule, fields, futureEntries, fallbackType) {
+            fields.forEach(function (field) {
+                var rawValue = schedule[field.key];
                 var isoDate = extractDateValue(rawValue);
                 if (!rawValue || !isoDate) return;
 
                 var entry = {
                     date: isoDate,
                     rawValue: rawValue,
-                    priority: fieldPriority[fieldKey] !== undefined ? fieldPriority[fieldKey] : 99
+                    label: field.label,
+                    priority: field.priority
                 };
 
-                if (!fallbackEntry || entry.date < fallbackEntry.date || (entry.date === fallbackEntry.date && entry.priority < fallbackEntry.priority)) {
-                    fallbackEntry = entry;
-                }
-
                 if (isoDate >= todayIso) {
-                    candidates.push(entry);
+                    futureEntries.push(entry);
                 }
-            });
-        });
 
-        if (candidates.length) {
-            candidates.sort(function (left, right) {
-                if (left.date !== right.date) return left.date.localeCompare(right.date);
-                return left.priority - right.priority;
+                if (fallbackType === "registration") {
+                    fallbackRegistrationEntry = updateFallback(fallbackRegistrationEntry, entry);
+                    return;
+                }
+
+                fallbackExamEntry = updateFallback(fallbackExamEntry, entry);
             });
-            return candidates[0];
         }
 
-        return fallbackEntry;
+        (item && item.schedules || []).forEach(function (schedule) {
+            collectEntries(schedule, registrationFields, futureRegistrationEntries, "registration");
+            collectEntries(schedule, examFields, futureExamEntries, "exam");
+        });
+
+        function pickEarliest(entries) {
+            return entries.sort(function (left, right) {
+                if (left.date !== right.date) return left.date.localeCompare(right.date);
+                return left.priority - right.priority;
+            })[0];
+        }
+
+        if (futureRegistrationEntries.length) {
+            return pickEarliest(futureRegistrationEntries);
+        }
+
+        if (futureExamEntries.length) {
+            return pickEarliest(futureExamEntries);
+        }
+
+        return fallbackRegistrationEntry || fallbackExamEntry;
     }
 
     function formatPrimarySchedule(item) {
         var primaryEntry = getPrimaryScheduleEntry(item);
-        return primaryEntry ? primaryEntry.rawValue : "일정 업데이트 대기";
+        if (primaryEntry) {
+            return primaryEntry.label + " " + primaryEntry.rawValue;
+        }
+        return "공식 일정 확인 필요";
     }
 
     function renderDifficultyDots(score) {
@@ -644,13 +705,13 @@
             var fingerprint = buildScheduleFingerprint(item);
             nextKnownMap[item.slug] = fingerprint;
             if (fingerprint && knownMap[item.slug] && knownMap[item.slug] !== fingerprint) {
-                alerts.push(displayName(item) + " ?쇱젙???덈줈 ?낅뜲?댄듃?섏뿀?듬땲??");
+                alerts.push(displayName(item) + " 일정이 새로 업데이트되었습니다.");
             }
         });
 
         if ((payload.today_alerts || []).length) {
             payload.today_alerts.forEach(function (alert) {
-                alerts.push(alert.name + " " + alert.round + " " + alert.part + " ?쒗뿕?쇱엯?덈떎.");
+                alerts.push(alert.name + " " + alert.round + " " + alert.part + " 시험일입니다.");
             });
         }
 
@@ -718,8 +779,8 @@
 
         function addRow(label, value, status) {
             if (!value) return;
-            var chip = status && status.label
-                ? '<span class="cert-chip ' + getStatusClass(status.code) + '">' + escapeHtml(status.label) + '</span>'
+            var chip = status && status.code
+                ? '<span class="cert-chip ' + getStatusClass(status.code) + '">' + escapeHtml(getStatusLabel(status)) + '</span>'
                 : "";
             rows.push(
                 '<div class="cert-schedule-row">' +
@@ -750,7 +811,7 @@
 
     function renderDetail(item) {
         if (!item) {
-            detailPanel.innerHTML = '<div class="cert-empty">議곌굔??留욌뒗 ?먭꺽利앹씠 ?놁뒿?덈떎.</div>';
+            detailPanel.innerHTML = '<div class="cert-empty">조건에 맞는 자격증이 없습니다.</div>';
             if (certModalExternalLink) certModalExternalLink.setAttribute("href", "#");
             return;
         }
@@ -817,7 +878,7 @@
                     '</div>' +
                     '<div class="cert-glance-item">' +
                         '<p class="cert-glance-label">가장 가까운 일정</p>' +
-                        '<p class="cert-glance-value">' + escapeHtml(urgency.label || "공식 사이트 확인") + '</p>' +
+                        '<p class="cert-glance-value">' + escapeHtml(formatPrimarySchedule(item)) + '</p>' +
                     '</div>' +
                     '<div class="cert-glance-item">' +
                         '<p class="cert-glance-label">합격률</p>' +
@@ -848,10 +909,10 @@
             var badges = [];
 
             if (favorites.has(item.slug)) {
-                badges.push('<span class="cert-mini-badge favorite">愿??/span>');
+                badges.push('<span class="cert-mini-badge favorite">관심</span>');
             }
             if (hasOpenRegistration(item)) {
-                badges.push('<span class="cert-mini-badge status-open">?묒닔以?/span>');
+                badges.push('<span class="cert-mini-badge status-open">접수중</span>');
             }
             if (urgency.code !== "unknown" && urgency.label) {
                 badges.push('<span class="cert-mini-badge ' + getStatusClass(urgency.code) + '">' + escapeHtml(urgency.label) + '</span>');
@@ -962,7 +1023,7 @@
         var candidates = getCalendarCandidates(item);
 
         selectedCalendarSlug = item && item.slug ? item.slug : "";
-        calendarCopy.textContent = displayName(item) + " 시험 일정을 오늘의 계획에 바로 추가할 수 있습니다.";
+        calendarCopy.textContent = displayName(item) + " 접수 시작일이나 시험일을 오늘의 계획에 바로 추가할 수 있습니다.";
         calendarSelect.innerHTML = candidates.map(function (candidate) {
             return '<option value="' + escapeHtml(candidate.date) + '" data-label="' + escapeHtml(candidate.label) + '">' +
                 escapeHtml(candidate.label + " - " + candidate.display) +
@@ -970,7 +1031,7 @@
         }).join("");
         calendarSelect.disabled = !candidates.length;
         calendarSubmitButton.disabled = !candidates.length;
-        setCalendarFeedback(candidates.length ? "" : "오늘 이후에 추가할 수 있는 시험 날짜가 없습니다.", candidates.length ? "" : "error");
+        setCalendarFeedback(candidates.length ? "" : "오늘 이후에 추가할 수 있는 접수/시험 일정이 없습니다.", candidates.length ? "" : "error");
 
         calendarModal.classList.add("is-open");
         calendarModal.setAttribute("aria-hidden", "false");
@@ -1011,7 +1072,7 @@
         var selectedLabel = selectedOption ? (selectedOption.getAttribute("data-label") || "") : "";
 
         if (!item || !selectedDate) {
-            setCalendarFeedback("시험 날짜를 먼저 선택해주세요.", "error");
+            setCalendarFeedback("일정 날짜를 먼저 선택해주세요.", "error");
             return;
         }
         if (!plannerGoalUrl) {
@@ -1128,8 +1189,8 @@
         renderDetail(selectedItem);
 
         if (!items.length) {
-            selectorList.innerHTML = '<div class="cert-empty">議곌굔??留욌뒗 ?먭꺽利앹씠 ?놁뒿?덈떎.</div>';
-            detailPanel.innerHTML = '<div class="cert-empty">寃?됱뼱???꾪꽣瑜?諛붽퓭???ㅼ떆 ?뺤씤?대낫?몄슂.</div>';
+            selectorList.innerHTML = '<div class="cert-empty">조건에 맞는 자격증이 없습니다.</div>';
+            detailPanel.innerHTML = '<div class="cert-empty">검색어나 필터를 바꿔서 다시 확인해보세요.</div>';
         }
     }
 
@@ -1151,7 +1212,7 @@
         if (!items.length) {
             pinnedList.innerHTML = '<div class="cert-empty">\uac80\uc0c9 \uc870\uac74\uc5d0 \ub9de\ub294 \ud544\uc218 \uc790\uaca9\uc99d\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</div>';
             selectorList.innerHTML = '<div class="cert-empty">\uac80\uc0c9 \uc870\uac74\uc5d0 \ub9de\ub294 \uc790\uaca9\uc99d\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</div>';
-            detailPanel.innerHTML = '<div class="cert-empty">\uac80\uc0c9\uc5b4\ub098 \ud544\ud130\ub97c \ubc14轅?uc11c \ub2e4\uc2dc \ud655\uc778\ud574\ubcf4\uc138\uc694.</div>';
+            detailPanel.innerHTML = '<div class="cert-empty">검색어나 필터를 바꿔서 다시 확인해보세요.</div>';
         }
     }
 
@@ -1176,6 +1237,11 @@
     });
 
     searchInput.addEventListener("input", render);
+
+    if (pinnedToggle) {
+        setPinnedBrowserExpanded(true);
+        pinnedToggle.addEventListener("click", togglePinnedBrowser);
+    }
 
     selectorList.addEventListener("click", function (event) {
         var calendarButton = event.target.closest("[data-cert-calendar]");
@@ -1275,7 +1341,7 @@
                         '<p class="cert-stat-copy">잠시 후 다시 시도해주세요.</p>' +
                     '</div>';
             }
-            selectorList.innerHTML = '<div class="cert-error">?먭꺽利?紐⑸줉??媛?몄삤吏 紐삵뻽?듬땲??</div>';
-            detailPanel.innerHTML = '<div class="cert-error">怨듭떇 ?먭꺽利??쇱젙 ?곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??</div>';
+            selectorList.innerHTML = '<div class="cert-error">자격증 목록을 불러오지 못했습니다.</div>';
+            detailPanel.innerHTML = '<div class="cert-error">공식 자격증 일정 데이터를 불러오지 못했습니다.</div>';
         });
 })();

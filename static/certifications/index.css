@@ -279,6 +279,56 @@
         linear-gradient(180deg, #fff8f2 0%, #ffffff 100%);
 }
 
+.cert-accordion-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    padding: 10px 14px;
+    border: 1px solid #f1c8ab;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #8a4b17;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.cert-accordion-toggle:hover {
+    background: #fff;
+    border-color: #ffb47f;
+    color: var(--cert-orange-deep);
+}
+
+.cert-accordion-toggle-icon {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-1px);
+    transition: transform 0.2s ease;
+}
+
+.cert-accordion-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.24s ease, opacity 0.24s ease;
+}
+
+.cert-accordion-body-inner {
+    overflow: hidden;
+}
+
+.cert-pinned-browser.is-collapsed .cert-accordion-body {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.cert-pinned-browser.is-collapsed .cert-accordion-toggle-icon {
+    transform: rotate(-45deg) translateY(1px);
+}
+
 .cert-browser-head {
     display: flex;
     justify-content: space-between;
