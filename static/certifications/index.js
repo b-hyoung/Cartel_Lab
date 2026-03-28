@@ -157,6 +157,40 @@
             "정보기술자격"
         ]
     };
+    var DISTINCTION_NOTES_BY_SLUG = {
+        "sqld": {
+            short: "SQLP와 다른 시험 · SQL 기본과 개발 실무 기초 중심",
+            detail: "SQLP와 다른 시험입니다. SQLD는 SQL 기본 문법과 개발 실무 기초를 확인하는 입문 성격의 시험입니다."
+        },
+        "sqlp": {
+            short: "SQLD와 다른 시험 · 설계와 성능 튜닝까지 보는 상위 단계",
+            detail: "SQLD와 다른 시험입니다. SQLP는 SQL 설계, 데이터 모델 이해, 성능 튜닝까지 보는 상위 전문가 시험입니다."
+        },
+        "adsp": {
+            short: "ADP와 다른 시험 · 데이터 분석 입문과 기초 실무 중심",
+            detail: "ADP와 다른 시험입니다. ADsP는 데이터 분석 기본 개념, 통계 기초, 분석 실무 이해를 보는 준전문가 단계 시험입니다."
+        },
+        "adp": {
+            short: "ADsP와 다른 시험 · 분석 설계와 실무 역량을 더 깊게 확인",
+            detail: "ADsP와 다른 시험입니다. ADP는 데이터 분석 설계, 통계 적용, 모델링과 해석까지 더 깊게 보는 전문가 단계 시험입니다."
+        },
+        "dasp": {
+            short: "DAP와 다른 시험 · 데이터 아키텍처 기초와 모델링 기본 중심",
+            detail: "DAP와 다른 시험입니다. DAsP는 데이터 아키텍처 기본 개념, 표준화, 모델링 기초를 확인하는 준전문가 단계 시험입니다."
+        },
+        "dap": {
+            short: "DAsP와 다른 시험 · 설계와 거버넌스까지 보는 상위 단계",
+            detail: "DAsP와 다른 시험입니다. DAP는 데이터 구조 설계, 품질 관리, 거버넌스까지 더 넓게 다루는 전문가 단계 시험입니다."
+        },
+        "information-processing-industrial": {
+            short: "정보처리기사와 다른 시험 · 산업기사 단계의 실무형 자격",
+            detail: "정보처리기사와 다른 시험입니다. 정보처리산업기사는 산업기사 단계 자격으로, 기사 대비 범위와 난이도, 응시 기준이 다를 수 있습니다."
+        },
+        "information-processing-industrial-engineer": {
+            short: "정보처리산업기사와 다른 시험 · 기사 단계의 상위 자격",
+            detail: "정보처리산업기사와 다른 시험입니다. 정보처리기사는 기사 단계 자격으로, 산업기사 대비 이론 범위와 난이도가 더 높은 편입니다."
+        }
+    };
 
     if (!detailPanel || !selectorList || !pinnedList || !searchInput || !liveAlert || !liveAlertList || !certModal || !calendarModal || !calendarSelect || !calendarCopy || !calendarFeedback || !calendarSubmitButton) {
         return;
@@ -353,12 +387,114 @@
 
     function normalizeItems(items) {
         var seen = {};
-        return (items || []).map(normalizeItem).filter(function (item) {
+        var grouped = {};
+        var ordered = [];
+
+        function sourceRank(source) {
+            if (source === "Q-Net") return 0;
+            if (source === "KDATA DataQ") return 1;
+            if (source === "KAIT") return 2;
+            if (source === "한국생산성본부") return 3;
+            return 9;
+        }
+
+        function scheduleFingerprint(schedule) {
+            return [
+                schedule && schedule.round,
+                schedule && schedule.registration,
+                schedule && schedule.exam_date,
+                schedule && schedule.written_registration,
+                schedule && schedule.written_exam,
+                schedule && schedule.practical_registration,
+                schedule && schedule.practical_exam,
+                schedule && schedule.result_date,
+                schedule && schedule.written_result,
+                schedule && schedule.final_result
+            ].join("|");
+        }
+
+        function sourceEntryKey(entry) {
+            return [
+                entry.source,
+                entry.official_url,
+                entry.apply_url,
+                entry.apply_label
+            ].join("|");
+        }
+
+        function getSourceEntry(item) {
+            return {
+                source: item.source || "",
+                qualifier: getSourceQualifier(item),
+                official_url: item.official_url || "",
+                apply_url: item.apply_url || "",
+                apply_label: item.apply_label || ""
+            };
+        }
+
+        (items || []).map(normalizeItem).filter(function (item) {
             if (!item || hiddenSlugs.indexOf(item.slug) !== -1) return false;
             var key = [item.slug, item.name, item.source].join("|");
             if (seen[key]) return false;
             seen[key] = true;
             return true;
+        }).forEach(function (item) {
+            var mergeKey = item.name || item.short_name || item.slug;
+            var sourceEntry = getSourceEntry(item);
+            var existing = grouped[mergeKey];
+
+            if (!existing) {
+                grouped[mergeKey] = Object.assign({}, item, {
+                    source_entries: [sourceEntry],
+                    merged_slugs: [item.slug]
+                });
+                ordered.push(mergeKey);
+                return;
+            }
+
+            existing.merged_slugs = existing.merged_slugs.concat(item.slug);
+
+            var sourceEntryExists = existing.source_entries.some(function (entry) {
+                return sourceEntryKey(entry) === sourceEntryKey(sourceEntry);
+            });
+            if (!sourceEntryExists) {
+                existing.source_entries.push(sourceEntry);
+                existing.source_entries.sort(function (left, right) {
+                    return sourceRank(left.source) - sourceRank(right.source);
+                });
+            }
+
+            var mergedSchedules = (existing.schedules || []).concat(item.schedules || []);
+            var scheduleSeen = {};
+            existing.schedules = mergedSchedules.filter(function (schedule) {
+                var fingerprint = scheduleFingerprint(schedule);
+                if (scheduleSeen[fingerprint]) return false;
+                scheduleSeen[fingerprint] = true;
+                return true;
+            });
+
+            if (sourceRank(item.source) < sourceRank(existing.source)) {
+                existing.slug = item.slug;
+                existing.official_url = item.official_url;
+                existing.apply_url = item.apply_url;
+                existing.apply_label = item.apply_label;
+                existing.source = item.source;
+            }
+
+            if (!existing.description && item.description) existing.description = item.description;
+            if ((!existing.error || existing.schedules.length) && item.error && !item.schedules.length) {
+                existing.error = item.error;
+            }
+        });
+
+        return ordered.map(function (key) {
+            var item = grouped[key];
+            var qualifiers = (item.source_entries || []).map(function (entry) {
+                return entry.qualifier || entry.source;
+            }).filter(Boolean);
+
+            item.source = qualifiers.join(" · ") || item.source;
+            return item;
         });
     }
 
@@ -414,14 +550,53 @@
         };
     }
 
+    function getBaseDisplayName(item) {
+        if (!item) return "";
+        return item.name || item.short_name || "";
+    }
+
+    function getSourceQualifier(item) {
+        var source = item && item.source ? item.source : "";
+        if (source === "KDATA DataQ") return "DataQ";
+        if (source === "한국생산성본부") return "KPC";
+        return source;
+    }
+
     function displayName(item) {
         if (!item) return "";
-        return item.name || "";
+        return getBaseDisplayName(item);
     }
 
     function displayShortName(item) {
         if (!item) return "";
-        return item.name || item.short_name || "";
+        return displayName(item);
+    }
+
+    function getSourceEntries(item) {
+        if (!item) return [];
+        if (item.source_entries && item.source_entries.length) return item.source_entries;
+
+        return [{
+            source: item.source || "",
+            qualifier: getSourceQualifier(item),
+            official_url: item.official_url || "",
+            apply_url: item.apply_url || "",
+            apply_label: item.apply_label || ""
+        }];
+    }
+
+    function getDistinctionInfo(item) {
+        if (!item) return null;
+
+        var slugs = [item.slug].concat(item.merged_slugs || []);
+        for (var index = 0; index < slugs.length; index += 1) {
+            var slug = slugs[index];
+            if (slug && DISTINCTION_NOTES_BY_SLUG[slug]) {
+                return DISTINCTION_NOTES_BY_SLUG[slug];
+            }
+        }
+
+        return null;
     }
 
     function favoritesSet() {
@@ -820,6 +995,8 @@
         var isFavorite = favoriteIds.indexOf(item.slug) !== -1;
         var urgency = getUrgency(item);
         var hasSchedules = (item.schedules || []).length > 0;
+        var sourceEntries = getSourceEntries(item);
+        var distinctionInfo = getDistinctionInfo(item);
         var cardClass = "";
         if (urgency.code === "today") cardClass = "urgency-today";
         if (urgency.code === "urgent") cardClass = "urgency-urgent";
@@ -850,8 +1027,35 @@
               '</div>';
 
         if (certModalExternalLink) {
-            certModalExternalLink.setAttribute("href", item.official_url || item.apply_url || "#");
+            var primarySourceEntry = sourceEntries[0] || null;
+            certModalExternalLink.setAttribute(
+                "href",
+                (primarySourceEntry && (primarySourceEntry.official_url || primarySourceEntry.apply_url)) || item.official_url || item.apply_url || "#"
+            );
         }
+
+        var sourceLinks = sourceEntries.map(function (entry) {
+            var qualifier = entry.qualifier || entry.source || "공식";
+            var links = [];
+
+            if (entry.official_url) {
+                links.push(
+                    '<a class="cert-link" href="' + escapeHtml(entry.official_url) + '" target="_blank" rel="noopener noreferrer">' +
+                        escapeHtml(qualifier + " 일정") +
+                    '</a>'
+                );
+            }
+
+            if (entry.apply_url && entry.apply_url !== entry.official_url) {
+                links.push(
+                    '<a class="cert-link secondary" href="' + escapeHtml(entry.apply_url) + '" target="_blank" rel="noopener noreferrer">' +
+                        escapeHtml(qualifier + " 신청") +
+                    '</a>'
+                );
+            }
+
+            return links.join("");
+        }).join("");
 
         detailPanel.innerHTML = '' +
             '<article class="cert-card ' + cardClass + '">' +
@@ -867,6 +1071,12 @@
                     '</div>' +
                 '</div>' +
                 '<p class="cert-card-copy">' + escapeHtml(item.description || "공식 일정과 접수 링크를 빠르게 확인할 수 있습니다.") + '</p>' +
+                (distinctionInfo
+                    ? '<div class="cert-detail-distinction">' +
+                        '<strong>비슷한 시험과 차이</strong>' +
+                        '<span>' + escapeHtml(distinctionInfo.detail) + '</span>' +
+                      '</div>'
+                    : '') +
                 '<div class="cert-glance">' +
                     '<div class="cert-glance-item">' +
                         '<p class="cert-glance-label">시험 구조</p>' +
@@ -894,10 +1104,7 @@
                     '</div>' +
                 '</div>' +
                 '<div class="cert-inline-tip">' + escapeHtml(item.quick_tip || "자세한 수치는 공식 공고에서 최종 확인해주세요.") + '</div>' +
-                '<div class="cert-link-group">' +
-                    '<a class="cert-link" href="' + escapeHtml(item.official_url || "#") + '" target="_blank" rel="noopener noreferrer">공식 일정 보기</a>' +
-                    '<a class="cert-link secondary" href="' + escapeHtml(item.apply_url || item.official_url || "#") + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.apply_label || "시험 신청하기") + '</a>' +
-                '</div>' +
+                '<div class="cert-link-group">' + sourceLinks + '</div>' +
                 scheduleMarkup +
             '</article>';
     }
@@ -906,6 +1113,7 @@
         var favorites = favoritesSet();
         selectorList.innerHTML = items.map(function (item) {
             var urgency = getUrgency(item);
+            var distinctionInfo = getDistinctionInfo(item);
             var badges = [];
 
             if (favorites.has(item.slug)) {
@@ -934,6 +1142,9 @@
                         '<span class="cert-selector-glance-item"><strong>합격률</strong><span>' + escapeHtml(item.pass_rate || "확인 필요") + '</span></span>' +
                         '<span class="cert-selector-glance-item"><strong>응시료</strong><span>' + escapeHtml(item.exam_fee || "확인 필요") + '</span></span>' +
                     '</span>' +
+                    (distinctionInfo
+                        ? '<span class="cert-selector-distinction">' + escapeHtml(distinctionInfo.short) + '</span>'
+                        : '') +
                     '<span class="cert-selector-foot">' +
                         '<span class="cert-selector-open">' + escapeHtml(item.quick_tip || "클릭해서 자세히 보기") + '</span>' +
                         '<span class="cert-chip ' + getStatusClass(urgency.code) + '">클릭해서 보기</span>' +
@@ -952,6 +1163,7 @@
 
         pinnedList.innerHTML = items.map(function (item) {
             var urgency = getUrgency(item);
+            var distinctionInfo = getDistinctionInfo(item);
             var badges = [];
 
             if (favorites.has(item.slug)) {
@@ -981,6 +1193,9 @@
                         '<span class="cert-selector-glance-item"><strong>\ud569\uaca9\ub960</strong><span>' + escapeHtml(item.pass_rate || "\ud655\uc778 \ud544\uc694") + '</span></span>' +
                         '<span class="cert-selector-glance-item"><strong>\uc751\uc2dc\ub8cc</strong><span>' + escapeHtml(item.exam_fee || "\ud655\uc778 \ud544\uc694") + '</span></span>' +
                     '</span>' +
+                    (distinctionInfo
+                        ? '<span class="cert-selector-distinction">' + escapeHtml(distinctionInfo.short) + '</span>'
+                        : '') +
                     '<span class="cert-selector-foot">' +
                         '<span class="cert-selector-open">' + escapeHtml(item.quick_tip || "\ud074\ub9ad\ud574\uc11c \uc790\uc138\ud788 \ubcf4\uae30") + '</span>' +
                         '<span class="cert-chip ' + getStatusClass(urgency.code) + '">\ud074\ub9ad\ud574\uc11c \ubcf4\uae30</span>' +
