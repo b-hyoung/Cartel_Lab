@@ -10,7 +10,6 @@ export default function UserDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // 외부 클릭 시 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -23,7 +22,7 @@ export default function UserDropdown() {
     return (
       <Link
         href="/login"
-        className="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+        className="rounded-lg px-[10px] py-[7px] text-[15px] font-semibold text-[#868b94] transition-colors duration-200 hover:bg-[#f1f2f4] hover:text-[#212124]"
       >
         로그인
       </Link>
@@ -34,39 +33,54 @@ export default function UserDropdown() {
   const initial = user?.name?.slice(0, 1) ?? "?";
 
   return (
-    <div ref={ref} className="relative ml-1.5">
+    <div ref={ref} className="relative ml-[6px]">
+      {/* 트리거 버튼 */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="inline-flex items-center gap-[5px] rounded-lg border-none bg-transparent px-[10px] py-[7px] text-[15px] font-semibold text-[#868b94] transition-colors duration-200 hover:bg-[#f1f2f4] hover:text-[#212124]"
       >
         {user?.image ? (
-          <img src={user.image} className="h-6 w-6 rounded-full object-cover border border-gray-200" />
+          <img
+            src={user.image}
+            className="h-[26px] w-[26px] shrink-0 rounded-full border-[1.5px] border-[#e2e5e9] object-cover"
+          />
         ) : (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+          <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
             {initial}
           </span>
         )}
         {user?.name}
         <svg
-          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-[14px] w-[14px] shrink-0 transition-transform duration-[220ms] ${open ? "rotate-180" : ""}`}
           viewBox="0 0 16 16" fill="none"
         >
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
+      {/* 드롭다운 메뉴 */}
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 min-w-[180px] rounded-2xl border border-gray-100 bg-white p-1.5 shadow-lg">
-          <Link href={`${Routes.USERS}/${Pages.EDIT}`} onClick={() => setOpen(false)} className="dropdown-item">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-[100] min-w-[180px] origin-top-right rounded-2xl border border-[#e2e5e9] bg-white p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.10)]">
+          <Link
+            href={`${Routes.USERS}/${Pages.EDIT}`}
+            onClick={() => setOpen(false)}
+            className="dropdown-item"
+          >
             <EditIcon /> 내 정보 변경
           </Link>
-          <Link href={Routes.USERS} onClick={() => setOpen(false)} className="dropdown-item">
+          <Link
+            href={Routes.USERS}
+            onClick={() => setOpen(false)}
+            className="dropdown-item"
+          >
             <ProfileIcon /> 내 정보 및 이력서 분석
           </Link>
-          <div className="my-1 h-px bg-gray-100" />
+          <div className="my-1 h-px bg-[#f0f0f2]" />
           <button
             onClick={() => signOut()}
-            className="dropdown-item w-full text-red-600 hover:bg-red-50"
+            className="dropdown-item w-full text-[#c2410c] hover:bg-[#fff5f0]"
           >
             <LogoutIcon /> 로그아웃
           </button>

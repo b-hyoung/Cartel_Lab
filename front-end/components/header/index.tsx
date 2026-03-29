@@ -10,13 +10,14 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/94 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-[#eaebee] bg-white/94 backdrop-blur-[8px]">
       <div className="mx-auto flex max-w-[1380px] items-center justify-between gap-4 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-gray-900">
+        {/* 로고 */}
+        <Link href="/" className="inline-flex items-center gap-2.5 text-[15px] font-extrabold tracking-[-0.01em] text-[#212124]">
           <img
             src="/images/teamlab-logo.png"
             alt="Team Lab Logo"
-            className="h-[34px] w-[34px] rounded-lg border border-gray-100 object-cover"
+            className="h-[44px] w-[44px] object-contain"
           />
           Jvision Lab
         </Link>
@@ -24,6 +25,7 @@ export default function Header() {
         <MobileMenuToggle isOpen={menuOpen} onToggle={() => setMenuOpen((v) => !v)} />
 
         <Navbar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+
         <UserDropdown />
       </div>
     </header>

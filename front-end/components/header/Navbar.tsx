@@ -14,9 +14,18 @@ export default function Navbar({ isOpen, onClose }: Props) {
 
   return (
     <nav
-      className={`fixed inset-0 z-40 flex flex-col gap-8 bg-[#f3f3f5] px-6 pt-24 transition-all duration-200
-        lg:static lg:flex-row lg:items-center lg:gap-8 lg:bg-transparent lg:p-0 lg:opacity-100
-        ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto"}`}
+      className={`
+        fixed inset-0 z-40 flex flex-col items-stretch gap-[30px] overflow-y-auto
+        bg-[#f3f3f5] px-[26px] pb-8 pt-[90px]
+        transition-[transform,opacity] duration-[220ms] ease-[ease]
+        lg:static lg:flex-row lg:flex-wrap lg:items-center lg:gap-[30px]
+        lg:overflow-visible lg:bg-transparent lg:p-0
+        lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto
+        ${isOpen
+          ? "translate-y-0 opacity-100 pointer-events-auto"
+          : "-translate-y-2 opacity-0 pointer-events-none"
+        }
+      `}
     >
       {NAV_LINKS.map(({ href, label }) => {
         const active = pathname.startsWith(href);
@@ -25,11 +34,20 @@ export default function Navbar({ isOpen, onClose }: Props) {
             key={href}
             href={href}
             onClick={onClose}
-            className={`rounded-lg px-2.5 py-1.5 text-[15px] font-semibold transition-colors
+            className={`
+              rounded-lg px-[10px] py-[7px] text-[15px] font-semibold
+              transition-[color,background-color] duration-200
+              lg:text-[15px]
               ${active
-                ? "bg-orange-50 text-orange-500"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-              }`}
+                ? "bg-[#fff1e8] text-[#ff6f0f]"
+                : "text-[#868b94] hover:bg-[#f1f2f4] hover:text-[#212124]"
+              }
+              max-lg:rounded-none max-lg:px-0 max-lg:py-[3px]
+              max-lg:text-[clamp(38px,9vw,55px)] max-lg:font-black
+              max-lg:leading-[1.07] max-lg:tracking-[-0.045em]
+              max-lg:text-[#1f2124] max-lg:bg-transparent
+              ${active ? "max-lg:text-[#ff6f0f]" : ""}
+            `}
           >
             {label}
           </Link>
