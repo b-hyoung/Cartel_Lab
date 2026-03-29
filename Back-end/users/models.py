@@ -97,6 +97,12 @@ class User(AbstractUser):
     def get_remaining_analysis_count(self):
         return max(0, DAILY_ANALYSIS_LIMIT - self.get_today_analysis_count())
 
+    @property
+    def profile_image_url(self):
+        if self.profile_image:
+            return self.profile_image.url
+        return None
+
     def can_run_profile_analysis(self):
         return self.get_remaining_analysis_count() > 0
 

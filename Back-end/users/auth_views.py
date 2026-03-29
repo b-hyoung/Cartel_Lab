@@ -42,6 +42,7 @@ class LoginView(APIView):
         response = Response({
             'id': user.id,
             'name': user.name,
+            'image': user.profile_image_url,
             'is_staff': user.is_staff,
             'class_group': user.class_group,
         })
