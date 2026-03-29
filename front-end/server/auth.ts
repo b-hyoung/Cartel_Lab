@@ -17,6 +17,7 @@ async function authorizeUser(credentials: Record<string, string> | undefined): P
     return {
       id: String(user.id),
       name: user.name,
+      image: user.image,
       is_staff: user.is_staff,
       class_group: user.class_group,
     };
@@ -39,12 +40,14 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.image = user.image;
         token.is_staff = user.is_staff;
         token.class_group = user.class_group;
       }
       return token;
     },
     async session({ session, token }) {
+      session.user.image = token.image as string | null;
       session.user.is_staff = token.is_staff;
       session.user.class_group = token.class_group;
       return session;

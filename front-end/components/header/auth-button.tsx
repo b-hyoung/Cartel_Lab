@@ -5,6 +5,13 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Routes, Pages } from "@/constants/enums";
 
+const DEFAULT_PROFILE_IMAGES = [
+  "/images/default_01.png",
+  "/images/default_02.png",
+  "/images/default_03.png",
+  "/images/default_04.png",
+];
+
 export default function AuthButton() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
@@ -30,7 +37,6 @@ export default function AuthButton() {
   }
 
   const user = session.user;
-  const initial = user.name?.slice(0, 1) ?? "?";
 
   return (
     <div ref={ref} className="relative ml-[6px]">
@@ -41,16 +47,10 @@ export default function AuthButton() {
         aria-haspopup="true"
         className="inline-flex items-center gap-[5px] rounded-lg border-none bg-transparent px-[10px] py-[7px] text-[15px] font-semibold text-[#868b94] transition-colors duration-200 hover:bg-[#f1f2f4] hover:text-[#212124]"
       >
-        {user.image ? (
-          <img
-            src={user.image}
-            className="h-[26px] w-[26px] shrink-0 rounded-full border-[1.5px] border-[#e2e5e9] object-cover"
-          />
-        ) : (
-          <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-            {initial}
-          </span>
-        )}
+        <img
+          src={user.image || DEFAULT_PROFILE_IMAGES[Number(user.id) % DEFAULT_PROFILE_IMAGES.length]}
+          className="h-[26px] w-[26px] shrink-0 rounded-full border-[1.5px] border-[#e2e5e9] object-cover"
+        />
         {user?.name}
         <svg
           className={`h-[14px] w-[14px] shrink-0 transition-transform duration-[220ms] ${open ? "rotate-180" : ""}`}

@@ -20,6 +20,7 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    image: string | null;
     is_staff: boolean;
     class_group: string;
   }

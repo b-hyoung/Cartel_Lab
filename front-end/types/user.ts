@@ -15,6 +15,7 @@ export interface User {
 export interface LoginResponse {
   id: number;
   name: string;
+  image: string | null;
   is_staff: boolean;
   class_group: string;
 }
