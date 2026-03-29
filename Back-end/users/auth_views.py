@@ -40,6 +40,7 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
         response = Response({
+            'id': user.id,
             'name': user.name,
             'is_staff': user.is_staff,
             'class_group': user.class_group,
