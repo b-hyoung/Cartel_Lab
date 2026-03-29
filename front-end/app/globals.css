@@ -117,6 +117,12 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@layer components {
+  .dropdown-item {
+    @apply flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
