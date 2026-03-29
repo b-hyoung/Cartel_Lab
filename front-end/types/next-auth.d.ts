@@ -11,6 +11,7 @@ declare module "next-auth" {
     user: {
       id: string;
       name: string;
+      image: string | null;
       is_staff: boolean;
       class_group: string;
     };
