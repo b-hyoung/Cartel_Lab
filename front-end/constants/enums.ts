@@ -2,14 +2,17 @@
 
 // 애플리케이션의 페이지 경로를 정의
 export enum Routes {
-    ROOT = "/",
-    MENU = "menu",
-    ABOUT = "about",
-    CONTACT = "contact",
-    AUTH = "auth",
-
-    PROFILE = "profile",
-    ADMIN = "admin",
+ROOT = "/",
+    ATTENDANCE = "/attendance",
+    CERTIFICATIONS = "/certifications",
+    PLANNER = "/planner",
+    SEATS = "/seats",
+    JOBS = "/jobs",
+    CONTESTS = "/contests",
+    QUIZ = "/quiz",
+    BLOG = "/blog",
+    USERS = "/users",
+    ADMIN = "/dashboard",
 }
 
 /*  애플리케이션의 페이지 이름을 정의 
@@ -18,10 +21,8 @@ export enum Routes {
 export enum Pages {
     LOGIN = "signin",
     REGISTER = "signup",
-    FORGOT_PASSWORD = "forgot-password",
-    USERS = "users",
-    NEW = "new",
     EDIT = "edit",
+    NEW = "new",
 }
 
 // 입력 필드의 유형을 정의
