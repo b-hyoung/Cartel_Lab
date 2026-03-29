@@ -8,8 +8,8 @@ export async function dbFetch(endpoint: string, options: RequestInit = {}) {
   const defaultOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
-      // 필요한 경우 여기에 인증 토큰 등을 추가합니다.
     },
+    credentials: "include",
     ...options,
   };
 
