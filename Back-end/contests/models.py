@@ -18,6 +18,7 @@ class Contest(models.Model):
     category = models.CharField("분야", max_length=100) # AI, 개발 등
     reward = models.CharField("시상규모", max_length=100, blank=True, default="")
     
+    image_url = models.URLField("썸네일", max_length=500, blank=True, default="")
     content_summary = models.TextField("내용 요약", blank=True, default="")
     tags = models.CharField("태그", max_length=255, blank=True, default="")
     
