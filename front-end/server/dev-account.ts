@@ -14,10 +14,12 @@ export function getDevUser(credentials: Record<string, string> | undefined): Use
     return null;
   }
 
+  const randomIndex = Math.floor(Math.random() * 4) + 1;
+
   return {
     id: "0",
     name: "개발자",
-    image: null,
+    image: `/images/default_0${randomIndex}.png`,
     is_staff: true,
     class_group: "A",
   };

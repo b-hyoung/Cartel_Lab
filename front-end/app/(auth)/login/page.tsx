@@ -35,7 +35,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-[#eaebee] p-10 w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Image
-            src="/images/logo.png"
+            src="/images/teamlab-logo.png"
             alt="Jvision Lab"
             width={120}
             height={44}

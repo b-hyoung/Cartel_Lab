@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { UserCircle2, Settings, LayoutDashboard } from "lucide-react";
 import { NAV_LINKS } from "@/constants/navigation";
 import { Pages, Routes } from "@/constants/enums";
 
@@ -70,8 +71,7 @@ export default function Navbar({ isOpen, onClose }: Props) {
                   ${active ? "bg-[#fff1e8] text-brand" : "text-[#868b94] hover:bg-[#f1f2f4] hover:text-[#212124]"}
                   max-xl:rounded-none max-xl:bg-transparent max-xl:px-6 max-xl:py-4
                   max-xl:text-[22px] max-xl:font-bold
-                  max-xl:border-b max-xl:border-[#eaebee]
-                  ${active ? "max-xl:text-brand" : "max-xl:text-[#1a1a1a]"}
+                  ${active ? "max-xl:text-brand" : "max-xl:text-[#4a4a4a]"}
                 `}
               >
                 {label}
@@ -79,26 +79,34 @@ export default function Navbar({ isOpen, onClose }: Props) {
             );
           })}
 
-          {/* 모바일 전용 유저 메뉴 */}
-          {session && (
-            <>
-              <Link href={Routes.USERS} onClick={onClose} className={`xl:hidden px-6 py-4 text-[22px] font-bold border-b border-[#eaebee] ${pathname === Routes.USERS ? "text-brand" : "text-[#1a1a1a]"}`}>
-                내 프로필
-              </Link>
-              <Link href={`${Routes.USERS}/${Pages.EDIT}`} onClick={onClose} className={`xl:hidden px-6 py-4 text-[22px] font-bold border-b border-[#eaebee] ${pathname === `${Routes.USERS}/${Pages.EDIT}` ? "text-brand" : "text-[#1a1a1a]"}`}>
-                내 정보 변경
-              </Link>
-              {session.user.is_staff && (
-                <Link href={Routes.ADMIN} onClick={onClose} className={`xl:hidden px-6 py-4 text-[22px] font-bold border-b border-[#eaebee] ${pathname.startsWith(Routes.ADMIN) ? "text-brand" : "text-[#1a1a1a]"}`}>
-                  관리자 대시보드
-                </Link>
-              )}
-            </>
-          )}
         </div>
 
+        {/* 모바일 전용 유저 메뉴 - 하단 오른쪽 들여쓰기 */}
+        {session && (
+          <div className="xl:hidden mt-auto px-8 pt-4 pb-2 flex flex-col items-end gap-0">
+            <Link href={Routes.USERS} onClick={onClose} className={`w-full flex items-center justify-end gap-2 py-3 text-[15px] font-medium ${pathname === Routes.USERS ? "text-brand" : "text-[#868b94]"}`}>
+              내 프로필
+              {session.user.image ? (
+                <Image src={session.user.image} alt="프로필" width={36} height={36} className="rounded-full object-cover" />
+              ) : (
+                <UserCircle2 size={36} />
+              )}
+            </Link>
+            <Link href={`${Routes.USERS}/${Pages.EDIT}`} onClick={onClose} className={`w-full flex items-center justify-end gap-2 py-3 text-[15px] font-medium ${pathname === `${Routes.USERS}/${Pages.EDIT}` ? "text-brand" : "text-[#868b94]"}`}>
+              내 정보 변경
+              <Settings size={18} />
+            </Link>
+            {session.user.is_staff && (
+              <Link href={Routes.ADMIN} onClick={onClose} className={`w-full flex items-center justify-end gap-2 py-3 text-[15px] font-medium ${pathname.startsWith(Routes.ADMIN) ? "text-brand" : "text-[#868b94]"}`}>
+                관리자 대시보드
+                <LayoutDashboard size={18} />
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* 모바일 전용 로그인/로그아웃 */}
-        <div className="xl:hidden mt-auto px-6 pb-10">
+        <div className="xl:hidden px-6 pb-10" style={{ marginTop: session ? '0' : 'auto' }}>
           {session ? (
             <button
               onClick={() => { signOut(); onClose(); }}
