@@ -41,6 +41,10 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: local-dev-secret
+      NEXT_PUBLIC_API_BASE_URL: http://web:8000/api
     ports:
       - "3000:3000"
     depends_on:
