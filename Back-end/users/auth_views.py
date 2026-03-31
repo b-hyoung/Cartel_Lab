@@ -44,6 +44,7 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
         response = Response({
             'id': user.id,
             'name': user.name,
@@ -51,8 +52,9 @@ class LoginView(APIView):
             'is_staff': user.is_staff,
             'class_group': user.class_group,
             'access_token': access_token,
+            'refresh_token': refresh_token,
         })
-        set_auth_cookies(response, access_token, str(refresh))
+        set_auth_cookies(response, access_token, refresh_token)
         return response
 
 
@@ -72,7 +74,8 @@ class RefreshView(APIView):
 
     def post(self, request):
         jwt = settings.SIMPLE_JWT
-        refresh_token = request.COOKIES.get(jwt['AUTH_COOKIE_REFRESH'])
+        # body로 전달된 refresh 우선, 없으면 쿠키에서 읽기 (서버사이드 갱신 지원)
+        refresh_token = request.data.get('refresh') or request.COOKIES.get(jwt['AUTH_COOKIE_REFRESH'])
         if not refresh_token:
             return Response({'error': '리프레시 토큰이 없습니다.'}, status=status.HTTP_401_UNAUTHORIZED)
 

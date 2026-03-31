@@ -19,6 +19,7 @@ export interface LoginResponse {
   is_staff: boolean;
   class_group: string;
   access_token: string;
+  refresh_token: string;
 }
 
 // NextAuth authorize 반환 타입

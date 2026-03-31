@@ -23,5 +23,6 @@ export function getDevUser(credentials: Record<string, string> | undefined): Use
     is_staff: true,
     class_group: "A",
     access_token: "",
+    refresh_token: "",
   };
 }

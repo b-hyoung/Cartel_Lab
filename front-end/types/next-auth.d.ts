@@ -6,6 +6,7 @@ declare module "next-auth" {
     is_staff: boolean;
     class_group: string;
     access_token: string;
+    refresh_token: string;
   }
 
   interface Session {
@@ -26,5 +27,8 @@ declare module "next-auth/jwt" {
     is_staff: boolean;
     class_group: string;
     access_token: string;
+    refresh_token: string;
+    access_token_expires: number;
+    error?: string;
   }
 }
