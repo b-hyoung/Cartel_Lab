@@ -22,5 +22,6 @@ export function getDevUser(credentials: Record<string, string> | undefined): Use
     image: `/images/default_0${randomIndex}.png`,
     is_staff: true,
     class_group: "A",
+    access_token: "",
   };
 }
