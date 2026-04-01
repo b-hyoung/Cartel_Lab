@@ -2,6 +2,13 @@
 
 import * as React from "react";
 
+import {
+  getAllTimetables,
+  getClassTimetable,
+  getMergedTimetableRows,
+  WEEKDAY_FIELD_KEYS,
+  type TimetableMatrixRow,
+} from "@/constants/timetable";
 import { modalCardStyle, modalOverlayStyle, neutralBadgeStyle, timetableTableStyle } from "./_styles";
 
 type SeatTimetableSectionProps = {
@@ -10,55 +17,12 @@ type SeatTimetableSectionProps = {
   onClose: () => void;
 };
 
-type TimetableRow = {
-  period: string;
-  monday: string;
-  tuesday: string;
-  wednesday: string;
-  thursday: string;
-  friday: string;
-};
-
-const timetableA: TimetableRow[] = [
-  { period: "1 (09:00 ~ 09:50)", monday: "-", tuesday: "-", wednesday: "-", thursday: "-", friday: "-" },
-  { period: "2 (10:00 ~ 10:50)", monday: "데이터베이스\n한종진 / 2411", tuesday: "데이터베이스\n한종진 / 2411", wednesday: "객체지향프로그래밍\n이훈주 / 2411", thursday: "AI프롬프트엔지니어링\n최미란 / 2411", friday: "객체지향프로그래밍\n이훈주 / 2411" },
-  { period: "3 (11:00 ~ 11:50)", monday: "데이터베이스\n한종진 / 2411", tuesday: "데이터베이스\n한종진 / 2411", wednesday: "객체지향프로그래밍\n이훈주 / 2411", thursday: "AI프롬프트엔지니어링\n최미란 / 2411", friday: "객체지향프로그래밍\n이훈주 / 2411" },
-  { period: "4 (12:00 ~ 12:50)", monday: "-", tuesday: "-", wednesday: "-", thursday: "AI프롬프트엔지니어링\n최미란 / 2411", friday: "-" },
-  { period: "5 (13:00 ~ 13:50)", monday: "디지털포렌식\n이성원 / 2408", tuesday: "해킹 및 침해대응\n이성원 / 2412", wednesday: "캡스톤디자인\n장진수 / 2412", thursday: "-", friday: "-" },
-  { period: "6 (14:00 ~ 14:50)", monday: "디지털포렌식\n이성원 / 2408", tuesday: "해킹 및 침해대응\n이성원 / 2412", wednesday: "캡스톤디자인\n장진수 / 2412", thursday: "-", friday: "-" },
-  { period: "7 (15:00 ~ 15:50)", monday: "디지털포렌식\n이성원 / 2408", tuesday: "해킹 및 침해대응\n이성원 / 2412", wednesday: "-", thursday: "취업과창업\n최미란 / 2408", friday: "-" },
-  { period: "8 (16:00 ~ 16:50)", monday: "-", tuesday: "함께하는 여행\n박한규 / 2409", wednesday: "-", thursday: "취업과창업\n최미란 / 2408", friday: "-" },
-];
-
-const timetableB: TimetableRow[] = [
-  { period: "1 (09:00 ~ 09:50)", monday: "-", tuesday: "-", wednesday: "-", thursday: "-", friday: "-" },
-  { period: "2 (10:00 ~ 10:50)", monday: "AI프롬프트엔지니어링\n최미란 / 2408", tuesday: "모바일프로그래밍\n최대림 / 2408", wednesday: "JAVA프로그래밍 실무\n권숙연 / 2408", thursday: "-", friday: "웹프로그래밍 실무\n김석진 / 2408" },
-  { period: "3 (11:00 ~ 11:50)", monday: "AI프롬프트엔지니어링\n최미란 / 2408", tuesday: "모바일프로그래밍\n최대림 / 2408", wednesday: "JAVA프로그래밍 실무\n권숙연 / 2408", thursday: "-", friday: "웹프로그래밍 실무\n김석진 / 2408" },
-  { period: "4 (12:00 ~ 12:50)", monday: "AI프롬프트엔지니어링\n최미란 / 2408", tuesday: "모바일프로그래밍\n최대림 / 2408", wednesday: "-", thursday: "-", friday: "웹프로그래밍 실무\n김석진 / 2408" },
-  { period: "5 (13:00 ~ 13:50)", monday: "-", tuesday: "-", wednesday: "캡스톤디자인\n권숙연 / 2412", thursday: "JAVA프로그래밍 실무\n권숙연 / 2408", friday: "-" },
-  { period: "6 (14:00 ~ 14:50)", monday: "-", tuesday: "데이터베이스\n한종진 / 2411", wednesday: "캡스톤디자인\n권숙연 / 2412", thursday: "JAVA프로그래밍 실무\n권숙연 / 2408", friday: "-" },
-  { period: "7 (15:00 ~ 15:50)", monday: "데이터베이스\n한종진 / 2411", tuesday: "데이터베이스\n한종진 / 2411", wednesday: "-", thursday: "취업과창업\n최미란 / 2408", friday: "-" },
-  { period: "8 (16:00 ~ 16:50)", monday: "데이터베이스\n한종진 / 2411", tuesday: "함께하는 여행\n박한규 / 2409", wednesday: "-", thursday: "취업과창업\n최미란 / 2408", friday: "-" },
-];
-
 export function SeatTimetableSection({ classGroup, open, onClose }: SeatTimetableSectionProps) {
   if (!open) return null;
 
-  const modalTitle =
-    classGroup === "A"
-      ? "2학년 A반 강의시간표 (2026학년 1학기)"
-      : classGroup === "B"
-        ? "2학년 B반 강의시간표 (2026학년 1학기)"
-        : "강의시간표";
-  const cards =
-    classGroup === "A"
-      ? [<TimetableCard key="A" title="A반 시간표" rows={timetableA} accent="orange" />]
-      : classGroup === "B"
-        ? [<TimetableCard key="B" title="B반 시간표" rows={timetableB} accent="green" />]
-        : [
-            <TimetableCard key="A" title="A반 시간표" rows={timetableA} accent="orange" />,
-            <TimetableCard key="B" title="B반 시간표" rows={timetableB} accent="green" />,
-          ];
+  const selected = getClassTimetable(classGroup);
+  const modalTitle = selected?.modalTitle ?? "강의시간표";
+  const cards = selected ? [selected] : [...getAllTimetables()];
 
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
@@ -87,7 +51,14 @@ export function SeatTimetableSection({ classGroup, open, onClose }: SeatTimetabl
         </div>
 
         <div className="space-y-8 px-6 py-6 sm:px-8 sm:py-8">
-          {cards}
+          {cards.map((card) => (
+            <TimetableCard
+              key={card.classGroup}
+              title={card.title}
+              rows={card.rows}
+              accent={card.classGroup === "A" ? "orange" : "green"}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -100,13 +71,14 @@ function TimetableCard({
   accent,
 }: {
   title: string;
-  rows: TimetableRow[];
+  rows: TimetableMatrixRow[];
   accent: "orange" | "green";
 }) {
   const accentStyle =
     accent === "orange"
       ? { borderColor: "#ff6f0f", background: "#fff7f1", color: "#9a3412" }
       : { borderColor: "#22a06b", background: "#effaf5", color: "#166534" };
+  const mergedRows = getMergedTimetableRows(rows);
 
   return (
     <section className="rounded-[24px] border border-[#eceff3] bg-[#fcfcfd] p-4 sm:p-5">
@@ -130,14 +102,14 @@ function TimetableCard({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {mergedRows.map((row) => (
               <tr key={row.period}>
                 <BodyCell muted>{row.period}</BodyCell>
-                <CourseCell value={row.monday} accent={accent} />
-                <CourseCell value={row.tuesday} accent={accent} />
-                <CourseCell value={row.wednesday} accent={accent} />
-                <CourseCell value={row.thursday} accent={accent} />
-                <CourseCell value={row.friday} accent={accent} />
+                {WEEKDAY_FIELD_KEYS.map((key) => {
+                  const cell = row[key];
+                  if (!cell) return null;
+                  return <CourseCell key={key} value={cell.value} rowSpan={cell.rowSpan} accent={accent} />;
+                })}
               </tr>
             ))}
           </tbody>
@@ -190,17 +162,42 @@ function BodyCell({ children, muted = false }: { children: React.ReactNode; mute
   );
 }
 
-function CourseCell({ value, accent }: { value: string; accent: "orange" | "green" }) {
-  if (value === "-") {
-    return <BodyCell muted={false}>-</BodyCell>;
+function CourseCell({
+  value,
+  rowSpan,
+  accent,
+}: {
+  value: { subject: string; detail: string } | null;
+  rowSpan: number;
+  accent: "orange" | "green";
+}) {
+  if (!value) {
+    return (
+      <td
+        rowSpan={rowSpan}
+        style={{
+          border: "1px solid #e3e7ec",
+          padding: "12px 10px",
+          textAlign: "center",
+          verticalAlign: "middle",
+          fontSize: 13,
+          fontWeight: 600,
+          color: "#94a3b8",
+          background: "#f8fafc",
+          minWidth: 136,
+        }}
+      >
+        -
+      </td>
+    );
   }
 
-  const [course, detail] = value.split("\n");
   const background = accent === "orange" ? "#fff4ea" : "#effaf5";
   const color = accent === "orange" ? "#9a3412" : "#166534";
 
   return (
     <td
+      rowSpan={rowSpan}
       style={{
         border: "1px solid #e3e7ec",
         padding: "12px 8px",
@@ -211,8 +208,8 @@ function CourseCell({ value, accent }: { value: string; accent: "orange" | "gree
         minWidth: 136,
       }}
     >
-      <div className="text-[13px] font-[800] leading-5">{course}</div>
-      <div className="mt-1 text-[11px] font-[700] opacity-80">{detail}</div>
+      <div className="text-[13px] font-[800] leading-5">{value.subject}</div>
+      <div className="mt-1 text-[11px] font-[700] opacity-80">{value.detail}</div>
     </td>
   );
 }
