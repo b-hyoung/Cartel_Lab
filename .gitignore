@@ -13,3 +13,9 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Codex / Impeccable
+.codex/
+AGENTS.md
+.impeccable.md
+front-end/.impeccable.md
