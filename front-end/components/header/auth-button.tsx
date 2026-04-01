@@ -3,14 +3,8 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Routes, Pages } from "@/constants/enums";
+import { DEFAULT_PROFILE_IMAGES } from "@/constants/images";
 import { Button } from "@/components/ui/button";
-
-const DEFAULT_PROFILE_IMAGES = [
-  "/images/default_01.png",
-  "/images/default_02.png",
-  "/images/default_03.png",
-  "/images/default_04.png",
-];
 
 export default function AuthButton() {
   const { data: session } = useSession();

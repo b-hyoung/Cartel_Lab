@@ -44,6 +44,7 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
         response = Response({
             'id': user.id,
             'name': user.name,
@@ -51,8 +52,9 @@ class LoginView(APIView):
             'is_staff': user.is_staff,
             'class_group': user.class_group,
             'access_token': access_token,
+            'refresh_token': refresh_token,
         })
-        set_auth_cookies(response, access_token, str(refresh))
+        set_auth_cookies(response, access_token, refresh_token)
         return response
 
 
@@ -72,14 +74,16 @@ class RefreshView(APIView):
 
     def post(self, request):
         jwt = settings.SIMPLE_JWT
-        refresh_token = request.COOKIES.get(jwt['AUTH_COOKIE_REFRESH'])
+        # body로 전달된 refresh 우선, 없으면 쿠키에서 읽기 (서버사이드 갱신 지원)
+        refresh_token = request.data.get('refresh') or request.COOKIES.get(jwt['AUTH_COOKIE_REFRESH'])
         if not refresh_token:
             return Response({'error': '리프레시 토큰이 없습니다.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
             refresh = RefreshToken(refresh_token)
-            response = Response({'detail': '토큰이 갱신되었습니다.'})
-            set_auth_cookies(response, str(refresh.access_token), str(refresh))
+            new_access = str(refresh.access_token)
+            response = Response({'detail': '토큰이 갱신되었습니다.', 'access_token': new_access})
+            set_auth_cookies(response, new_access, str(refresh))
             return response
         except Exception:
             return Response({'error': '유효하지 않은 토큰입니다.'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -136,7 +140,7 @@ class ProfileGithubView(APIView):
 
 
 class ProfileResumeView(APIView):
-    """이력서 파일 업로드"""
+    """이력서 파일 업로드/삭제"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -152,6 +156,14 @@ class ProfileResumeView(APIView):
         user.resume_file = file
         user.save(update_fields=['resume_file'])
         return Response({'resume_file': user.resume_file.name.replace('resumes/', '')})
+
+    def delete(self, request):
+        user = request.user
+        if user.resume_file:
+            user.resume_file.delete(save=False)
+            user.resume_file = None
+            user.save(update_fields=['resume_file'])
+        return Response({'resume_file': None})
 
 
 class GitHubConnectView(APIView):

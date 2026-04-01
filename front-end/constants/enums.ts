@@ -83,8 +83,10 @@ export enum ApiPaths {
     ME = "/me/",
     PROFILE = "/profile/",
     PROFILE_GITHUB = "/profile/github/",
+    PROFILE_RESUME = "/profile/resume/",
     GITHUB_CONNECT = "/profile/github/connect/",
     GITHUB_CALLBACK = "/profile/github/callback/",
+    PROFILE_ANALYZE = "/profile/analyze/",
 }
 
 // API 메서드를 정의
@@ -92,6 +94,7 @@ export enum Methods{
     GET = "GET",
     POST = "POST",
     PUT = "PUT",
+    PATCH = "PATCH",
     DELETE = "DELETE",
 }
 
