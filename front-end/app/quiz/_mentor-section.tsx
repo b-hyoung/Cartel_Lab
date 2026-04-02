@@ -1,0 +1,1030 @@
+"use client";
+
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Plus,
+  Save,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
+import { buttonBaseStyle, codeBlockStyle, heroCardStyle, inputStyle, sectionCardStyle, sectionSubtitleStyle, sectionTitleStyle, textareaStyle, QUIZ_PALETTE } from "./_styles";
+
+export type MentorQuizAuthor = {
+  id: number;
+  name: string;
+  student_id: string;
+  grade: string;
+  class_group: string;
+};
+
+export type MentorQuiz = {
+  id: number;
+  title: string;
+  code_snippet: string;
+  question: string;
+  answer: string;
+  scheduled_date: string | null;
+  created_at: string;
+  created_by: MentorQuizAuthor;
+  ai_trap_code: string;
+  ai_trap_answer: string;
+};
+
+export type MentorWeekDay = {
+  date: string;
+  day_ko: string;
+  quiz: MentorQuiz | null;
+};
+
+export type QuizListItem = {
+  quiz: MentorQuiz;
+  total: number;
+  correct: number;
+  ai_flagged: number;
+  is_mine: boolean;
+};
+
+export type AdminAttempt = {
+  id: number;
+  submitted_answer: string;
+  is_correct: boolean;
+  is_ai_flagged: boolean;
+  attempted_at: string;
+  attempt_number: number | null;
+  quiz: {
+    id: number;
+    title: string;
+  };
+};
+
+export type AdminWeekCell = {
+  date: string;
+  status: "correct" | "wrong" | "ai" | "none" | "future";
+  attempt_count: number;
+};
+
+export type AdminYearCell = {
+  date: string;
+  status: "correct" | "wrong" | "ai" | "none" | "future";
+  count: number;
+};
+
+export type AdminDayGroup = {
+  date: string;
+  day_ko: string;
+  attempts: AdminAttempt[];
+};
+
+export type FreshmanAdminRow = {
+  user: MentorQuizAuthor;
+  week_cells: AdminWeekCell[];
+  year_cells: AdminYearCell[];
+  week_attempts: AdminAttempt[];
+  week_attempts_by_day: AdminDayGroup[];
+  week_solved: number;
+  week_correct: number;
+};
+
+export type QuizAdminData = {
+  today: string;
+  week_dates: { date: string; day_ko: string }[];
+  year_dates: string[];
+  month_labels: string[];
+  freshman_data: FreshmanAdminRow[];
+};
+
+export type MentorQuizData = {
+  today: string;
+  week_start: string;
+  week_end: string;
+  week_offset: number;
+  show_next_arrow: boolean;
+  week_days: MentorWeekDay[];
+  quiz_stats: QuizListItem[];
+  admin_data: QuizAdminData;
+};
+
+type Props = {
+  data: MentorQuizData | null;
+  loading: boolean;
+  error: string | null;
+  weekOffset: number;
+  onWeekOffsetChange: (nextOffset: number) => void;
+  authFetch: (endpoint: string, options?: RequestInit) => Promise<unknown>;
+  onRefresh: () => Promise<void>;
+};
+
+type FormState = {
+  title: string;
+  code_snippet: string;
+  question: string;
+  answer: string;
+  ai_trap_code: string;
+  ai_trap_answer: string;
+};
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  code_snippet: "",
+  question: "",
+  answer: "",
+  ai_trap_code: "",
+  ai_trap_answer: "",
+};
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function statusTone(status: AdminWeekCell["status"] | AdminYearCell["status"]) {
+  switch (status) {
+    case "correct":
+      return { bg: "#e8f5e9", fg: QUIZ_PALETTE.successDeep, label: "정답" };
+    case "wrong":
+      return { bg: "#fff1ec", fg: "#c2410c", label: "오답" };
+    case "ai":
+      return { bg: QUIZ_PALETTE.warningSoft, fg: QUIZ_PALETTE.warningDeep, label: "AI 의심" };
+    case "future":
+      return { bg: "#f3f4f6", fg: QUIZ_PALETTE.muted, label: "예정" };
+    default:
+      return { bg: "#f3f4f6", fg: QUIZ_PALETTE.muted, label: "미제출" };
+  }
+}
+
+export function MentorSection({
+  data,
+  loading,
+  error,
+  weekOffset,
+  onWeekOffsetChange,
+  authFetch,
+  onRefresh,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<"list" | "admin">("list");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [openStudentId, setOpenStudentId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!data?.week_days.length) return;
+    const hasSelected = selectedDate && data.week_days.some((day) => day.date === selectedDate);
+    if (!hasSelected) {
+      const preferred = data.week_days.find((day) => day.date === data.today) ?? data.week_days[0];
+      setSelectedDate(preferred?.date ?? null);
+    }
+  }, [data, selectedDate]);
+
+  const selectedDay = data?.week_days.find((day) => day.date === selectedDate) ?? null;
+  const selectedListItem = selectedDay?.quiz
+    ? data?.quiz_stats.find((item) => item.quiz.id === selectedDay.quiz?.id) ?? null
+    : null;
+  const selectedIsPast = selectedDay ? selectedDay.date < (data?.today ?? "") : false;
+  const selectedEditable = Boolean(selectedDay) && Boolean(selectedDay?.quiz) && !selectedIsPast && Boolean(selectedListItem?.is_mine);
+  const canCreate = Boolean(selectedDay) && !selectedDay?.quiz && !selectedIsPast;
+
+  useEffect(() => {
+    setFormError(null);
+    setFormMessage(null);
+    if (!selectedDay?.quiz) {
+      setForm(EMPTY_FORM);
+      return;
+    }
+    setForm({
+      title: selectedDay.quiz.title,
+      code_snippet: selectedDay.quiz.code_snippet,
+      question: selectedDay.quiz.question,
+      answer: selectedDay.quiz.answer,
+      ai_trap_code: selectedDay.quiz.ai_trap_code,
+      ai_trap_answer: selectedDay.quiz.ai_trap_answer,
+    });
+  }, [selectedDay?.date, selectedDay?.quiz?.id]);
+
+  const handleFormChange = (field: keyof FormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedDay) return;
+
+    setSaving(true);
+    setFormError(null);
+    setFormMessage(null);
+
+    try {
+      const body = {
+        ...form,
+        scheduled_date: selectedDay.date,
+      };
+      if (selectedDay.quiz && selectedEditable) {
+        await authFetch(`/quiz/${selectedDay.quiz.id}/edit/`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        setFormMessage("문제를 수정했습니다.");
+      } else {
+        await authFetch("/quiz/create/", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        setFormMessage("문제를 등록했습니다.");
+      }
+      await onRefresh();
+    } catch (saveError) {
+      setFormError(saveError instanceof Error ? saveError.message : "문제를 저장하지 못했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedDay?.quiz || !selectedEditable || !window.confirm("이 문제를 삭제할까요?")) return;
+
+    setDeleting(true);
+    setFormError(null);
+    setFormMessage(null);
+
+    try {
+      await authFetch(`/quiz/${selectedDay.quiz.id}/delete/`, { method: "POST" });
+      setSelectedDate(selectedDay.date);
+      setForm(EMPTY_FORM);
+      setFormMessage("문제를 삭제했습니다.");
+      await onRefresh();
+    } catch (deleteError) {
+      setFormError(deleteError instanceof Error ? deleteError.message : "문제를 삭제하지 못했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <section style={heroCardStyle}>
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div>
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 12px",
+                borderRadius: 999,
+                background: QUIZ_PALETTE.brandSoft,
+                color: QUIZ_PALETTE.brandText,
+                fontSize: 12,
+                fontWeight: 800,
+              }}>
+                <CalendarDays size={14} />
+                QUIZ STUDIO
+              </span>
+              <h1 style={{ ...sectionTitleStyle, marginTop: 16 }}>이번 주와 다음 주 문제를 같은 구조로 관리합니다.</h1>
+              <p style={sectionSubtitleStyle}>
+                템플릿 기준의 등록, 수정, 삭제, 관리자 현황을 그대로 유지하면서 Next 화면으로 옮긴 상태입니다.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => onWeekOffsetChange(0)}
+                disabled={loading || weekOffset === 0}
+                style={{
+                  ...buttonBaseStyle,
+                  border: `1px solid ${weekOffset === 0 ? QUIZ_PALETTE.brandSoftStrong : QUIZ_PALETTE.line}`,
+                  background: weekOffset === 0 ? QUIZ_PALETTE.brandSoft : QUIZ_PALETTE.surface,
+                  color: weekOffset === 0 ? QUIZ_PALETTE.brandText : QUIZ_PALETTE.inkSoft,
+                  cursor: loading || weekOffset === 0 ? "default" : "pointer",
+                }}
+              >
+                <ChevronLeft size={16} />
+                이번 주
+              </button>
+              <button
+                type="button"
+                onClick={() => onWeekOffsetChange(1)}
+                disabled={loading || !data?.show_next_arrow || weekOffset === 1}
+                style={{
+                  ...buttonBaseStyle,
+                  border: `1px solid ${weekOffset === 1 ? QUIZ_PALETTE.brandSoftStrong : QUIZ_PALETTE.line}`,
+                  background: weekOffset === 1 ? QUIZ_PALETTE.brandSoft : QUIZ_PALETTE.surface,
+                  color: weekOffset === 1 ? QUIZ_PALETTE.brandText : QUIZ_PALETTE.inkSoft,
+                  cursor: loading || !data?.show_next_arrow || weekOffset === 1 ? "default" : "pointer",
+                }}
+              >
+                다음 주
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab("list")}
+              style={{
+                ...buttonBaseStyle,
+                border: "none",
+                background: activeTab === "list" ? QUIZ_PALETTE.brand : QUIZ_PALETTE.surface,
+                color: activeTab === "list" ? "#fff" : QUIZ_PALETTE.inkSoft,
+              }}
+            >
+              문제 목록
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("admin")}
+              style={{
+                ...buttonBaseStyle,
+                border: `1px solid ${activeTab === "admin" ? QUIZ_PALETTE.brandSoftStrong : QUIZ_PALETTE.line}`,
+                background: activeTab === "admin" ? QUIZ_PALETTE.brandSoft : QUIZ_PALETTE.surface,
+                color: activeTab === "admin" ? QUIZ_PALETTE.brandText : QUIZ_PALETTE.inkSoft,
+              }}
+            >
+              관리자 현황
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {loading ? (
+        <section style={{ ...sectionCardStyle, padding: 28 }}>
+          <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft }}>퀴즈 데이터를 불러오는 중입니다.</p>
+        </section>
+      ) : error ? (
+        <section style={{ ...sectionCardStyle, padding: 28, borderColor: "#f6c8c8", background: "#fff8f8" }}>
+          <p style={{ margin: 0, color: QUIZ_PALETTE.danger, lineHeight: 1.6 }}>퀴즈 데이터를 불러오지 못했습니다. {error}</p>
+        </section>
+      ) : activeTab === "list" ? (
+        <div style={{ display: "grid", gap: 18 }}>
+          <section style={{ ...sectionCardStyle, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                  {data?.week_start} - {data?.week_end}
+                </h2>
+                <p style={{ margin: "8px 0 0", color: QUIZ_PALETTE.inkSoft, fontSize: 14 }}>
+                  날짜 카드를 눌러 등록 또는 수정할 문제를 선택하세요.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(148px, 1fr))", gap: 12, minWidth: 1070 }}>
+                {data?.week_days.map((day) => {
+                  const isSelected = day.date === selectedDate;
+                  const isPast = day.date < data.today;
+                  const item = day.quiz ? data.quiz_stats.find((quizItem) => quizItem.quiz.id === day.quiz?.id) ?? null : null;
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      onClick={() => setSelectedDate(day.date)}
+                      style={{
+                        textAlign: "left",
+                        borderRadius: 22,
+                        border: `1px solid ${isSelected ? QUIZ_PALETTE.brandSoftStrong : day.quiz ? QUIZ_PALETTE.sandLine : QUIZ_PALETTE.line}`,
+                        background: isSelected ? QUIZ_PALETTE.surfaceTint : day.quiz ? "#fffaf4" : QUIZ_PALETTE.surface,
+                        padding: 18,
+                        display: "grid",
+                        gap: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: isSelected ? QUIZ_PALETTE.brandText : QUIZ_PALETTE.muted }}>
+                            {day.day_ko}요일
+                          </div>
+                          <div style={{ marginTop: 6, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                            {formatDate(day.date)}
+                          </div>
+                        </div>
+                        {day.quiz ? (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "6px 8px",
+                            borderRadius: 999,
+                            background: isPast ? QUIZ_PALETTE.sand : QUIZ_PALETTE.brandSoft,
+                            color: isPast ? QUIZ_PALETTE.inkSoft : QUIZ_PALETTE.brandText,
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}>
+                            {isPast ? "보기" : "편집"}
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "6px 8px",
+                            borderRadius: 999,
+                            background: isPast ? "#f3f4f6" : "#eef2ff",
+                            color: isPast ? QUIZ_PALETTE.muted : "#465ef5",
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}>
+                            {isPast ? "지난 날짜" : "새 문제"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ minHeight: 74 }}>
+                        {day.quiz ? (
+                          <>
+                            <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.4, color: QUIZ_PALETTE.ink }}>
+                              {day.quiz.title}
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.6, color: QUIZ_PALETTE.inkSoft }}>
+                              응시 {item?.total ?? 0} / 정답 {item?.correct ?? 0}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: 14, lineHeight: 1.7, color: QUIZ_PALETTE.inkSoft }}>
+                            {isPast ? "등록 이력이 없습니다." : "이 날짜에 새 퀴즈를 배정할 수 있습니다."}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section style={{ ...sectionCardStyle, padding: 24 }}>
+            {!selectedDay ? (
+              <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft }}>날짜를 선택하세요.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                      {selectedDay.day_ko}요일 {formatDate(selectedDay.date)}
+                    </h3>
+                    <p style={{ margin: "8px 0 0", color: QUIZ_PALETTE.inkSoft, fontSize: 14 }}>
+                      {selectedDay.quiz
+                        ? selectedEditable
+                          ? "현재 문제를 수정할 수 있습니다."
+                          : "이 문제는 읽기 전용으로 확인됩니다."
+                        : canCreate
+                          ? "이 날짜에 새 문제를 등록합니다."
+                          : "지난 날짜에는 새 문제를 추가할 수 없습니다."}
+                    </p>
+                  </div>
+                  {selectedDay.quiz ? (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {selectedListItem?.ai_flagged ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "7px 10px",
+                          borderRadius: 999,
+                          background: QUIZ_PALETTE.warningSoft,
+                          color: QUIZ_PALETTE.warningDeep,
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}>
+                          <ShieldAlert size={14} />
+                          AI 의심 {selectedListItem.ai_flagged}
+                        </span>
+                      ) : null}
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "7px 10px",
+                        borderRadius: 999,
+                        background: QUIZ_PALETTE.sand,
+                        color: QUIZ_PALETTE.inkSoft,
+                        fontSize: 12,
+                        fontWeight: 800,
+                      }}>
+                        작성자 {selectedDay.quiz.created_by.name}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedDay.quiz && !selectedEditable ? (
+                  <div style={{ display: "grid", gap: 14 }}>
+                    <div style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 999,
+                      background: QUIZ_PALETTE.sand,
+                      color: QUIZ_PALETTE.inkSoft,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      width: "fit-content",
+                    }}>
+                      <Eye size={14} />
+                      읽기 전용
+                    </div>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                        {selectedDay.quiz.title}
+                      </div>
+                      {selectedDay.quiz.code_snippet ? <pre style={codeBlockStyle}>{selectedDay.quiz.code_snippet}</pre> : null}
+                      <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft, lineHeight: 1.8 }}>{selectedDay.quiz.question}</p>
+                      <div style={{
+                        borderRadius: 18,
+                        background: QUIZ_PALETTE.surfaceTint,
+                        border: `1px solid ${QUIZ_PALETTE.brandSoftStrong}`,
+                        padding: "16px 18px",
+                        display: "grid",
+                        gap: 10,
+                      }}>
+                        <div style={{ fontSize: 12, color: QUIZ_PALETTE.brandText, fontWeight: 800 }}>정답</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: QUIZ_PALETTE.ink }}>{selectedDay.quiz.answer}</div>
+                        {selectedDay.quiz.ai_trap_code ? (
+                          <div style={{ fontSize: 13, lineHeight: 1.7, color: QUIZ_PALETTE.inkSoft }}>
+                            AI 함정 정답: <strong style={{ color: QUIZ_PALETTE.ink }}>{selectedDay.quiz.ai_trap_answer}</strong>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : canCreate || selectedEditable ? (
+                  <form onSubmit={handleSave} style={{ display: "grid", gap: 14 }}>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <input
+                        value={form.title}
+                        onChange={(event) => handleFormChange("title", event.target.value)}
+                        placeholder="문제 제목"
+                        style={inputStyle}
+                      />
+                      <textarea
+                        value={form.code_snippet}
+                        onChange={(event) => handleFormChange("code_snippet", event.target.value)}
+                        placeholder="코드 스니펫"
+                        style={{ ...textareaStyle, minHeight: 180, background: "#f9fafb" }}
+                      />
+                      <textarea
+                        value={form.question}
+                        onChange={(event) => handleFormChange("question", event.target.value)}
+                        placeholder="문제 설명"
+                        style={textareaStyle}
+                      />
+                      <input
+                        value={form.answer}
+                        onChange={(event) => handleFormChange("answer", event.target.value)}
+                        placeholder="정답 (쉼표로 복수 입력 가능)"
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    <div style={{
+                      borderRadius: 20,
+                      padding: 18,
+                      background: QUIZ_PALETTE.sand,
+                      border: `1px solid ${QUIZ_PALETTE.sandLine}`,
+                      display: "grid",
+                      gap: 12,
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: QUIZ_PALETTE.ink }}>AI 함정 설정</div>
+                        <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: QUIZ_PALETTE.inkSoft }}>
+                          화면에는 보이지 않지만 복사할 때만 AI에게 다른 코드를 전달하는 구조입니다.
+                        </div>
+                      </div>
+                      <textarea
+                        value={form.ai_trap_code}
+                        onChange={(event) => handleFormChange("ai_trap_code", event.target.value)}
+                        placeholder="숨김 코드"
+                        style={{ ...textareaStyle, minHeight: 120 }}
+                      />
+                      <input
+                        value={form.ai_trap_answer}
+                        onChange={(event) => handleFormChange("ai_trap_answer", event.target.value)}
+                        placeholder="AI 함정 정답"
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    {formError ? (
+                      <p style={{ margin: 0, color: QUIZ_PALETTE.danger, fontSize: 13, lineHeight: 1.6 }}>{formError}</p>
+                    ) : null}
+                    {formMessage ? (
+                      <p style={{ margin: 0, color: QUIZ_PALETTE.successDeep, fontSize: 13, lineHeight: 1.6 }}>{formMessage}</p>
+                    ) : null}
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        style={{
+                          ...buttonBaseStyle,
+                          border: "none",
+                          background: QUIZ_PALETTE.brand,
+                          color: "#fff",
+                          cursor: saving ? "default" : "pointer",
+                        }}
+                      >
+                        {selectedEditable ? <Save size={16} /> : <Plus size={16} />}
+                        {saving ? "저장 중" : selectedEditable ? "문제 저장하기" : "문제 등록하기"}
+                      </button>
+                      {selectedEditable ? (
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={deleting}
+                          style={{
+                            ...buttonBaseStyle,
+                            border: `1px solid #f2c4c4`,
+                            background: "#fff6f6",
+                            color: QUIZ_PALETTE.danger,
+                            cursor: deleting ? "default" : "pointer",
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          {deleting ? "삭제 중" : "삭제"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </form>
+                ) : (
+                  <div style={{
+                    borderRadius: 18,
+                    padding: "18px 20px",
+                    background: QUIZ_PALETTE.sand,
+                    color: QUIZ_PALETTE.inkSoft,
+                    fontSize: 14,
+                    lineHeight: 1.7,
+                  }}>
+                    지난 날짜의 빈 슬롯은 새로 등록할 수 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section style={{ ...sectionCardStyle, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                  전체 문제 목록
+                </h2>
+                <p style={{ margin: "8px 0 0", color: QUIZ_PALETTE.inkSoft, fontSize: 14 }}>
+                  템플릿의 문제 카드와 동일하게 정답, AI 함정, 응시 통계를 같이 봅니다.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              {data?.quiz_stats.map((item) => (
+                <article
+                  key={item.quiz.id}
+                  style={{
+                    borderRadius: 22,
+                    border: `1px solid ${item.quiz.scheduled_date === data.today ? QUIZ_PALETTE.brandSoftStrong : QUIZ_PALETTE.line}`,
+                    background: item.quiz.scheduled_date === data.today ? QUIZ_PALETTE.surfaceTint : QUIZ_PALETTE.surface,
+                    padding: 20,
+                    display: "grid",
+                    gap: 14,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                        {item.quiz.title}
+                      </h3>
+                      <p style={{ margin: "8px 0 0", fontSize: 13, color: QUIZ_PALETTE.inkSoft }}>
+                        {item.quiz.created_at ? formatDateTime(item.quiz.created_at) : "-"} · {item.quiz.created_by.name}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "7px 10px",
+                        borderRadius: 999,
+                        background: QUIZ_PALETTE.sand,
+                        color: QUIZ_PALETTE.inkSoft,
+                        fontSize: 12,
+                        fontWeight: 800,
+                      }}>
+                        {item.quiz.scheduled_date === data.today
+                          ? "오늘"
+                          : item.quiz.scheduled_date && item.quiz.scheduled_date > data.today
+                            ? `${formatDate(item.quiz.scheduled_date)} 예정`
+                            : item.quiz.scheduled_date
+                              ? formatDate(item.quiz.scheduled_date)
+                              : "날짜 없음"}
+                      </span>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "7px 10px",
+                        borderRadius: 999,
+                        background: QUIZ_PALETTE.sand,
+                        color: QUIZ_PALETTE.inkSoft,
+                        fontSize: 12,
+                        fontWeight: 800,
+                      }}>
+                        응시 {item.total} / 정답 {item.correct}
+                      </span>
+                      {item.ai_flagged ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "7px 10px",
+                          borderRadius: 999,
+                          background: QUIZ_PALETTE.warningSoft,
+                          color: QUIZ_PALETTE.warningDeep,
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}>
+                          AI {item.ai_flagged}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {item.quiz.code_snippet ? <pre style={codeBlockStyle}>{item.quiz.code_snippet}</pre> : null}
+                  <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft, lineHeight: 1.8 }}>{item.quiz.question}</p>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ fontSize: 12, color: QUIZ_PALETTE.brandText, fontWeight: 800 }}>정답</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: QUIZ_PALETTE.ink }}>{item.quiz.answer}</div>
+                    {item.quiz.ai_trap_code ? (
+                      <div style={{ fontSize: 13, color: QUIZ_PALETTE.inkSoft, lineHeight: 1.7 }}>
+                        AI 함정 정답 <strong style={{ color: QUIZ_PALETTE.ink }}>{item.quiz.ai_trap_answer}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 18 }}>
+          <section style={{ ...sectionCardStyle, padding: 24 }}>
+            <div style={{ marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                이번 주 참여 현황
+              </h2>
+              <p style={{ margin: "8px 0 0", color: QUIZ_PALETTE.inkSoft, fontSize: 14 }}>
+                1학년 제출 상태를 주간 표와 연간 잔디로 같이 봅니다.
+              </p>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "0 0 14px", fontSize: 12, color: QUIZ_PALETTE.muted }}>학생</th>
+                    {data?.admin_data.week_dates.map((weekDate) => (
+                      <th key={weekDate.date} style={{ padding: "0 0 14px", fontSize: 12, color: QUIZ_PALETTE.muted }}>
+                        {weekDate.day_ko}
+                        <div style={{ marginTop: 4, fontWeight: 400 }}>{formatDate(weekDate.date)}</div>
+                      </th>
+                    ))}
+                    <th style={{ padding: "0 0 14px", fontSize: 12, color: QUIZ_PALETTE.muted }}>이번 주</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.admin_data.freshman_data.map((student) => (
+                    <tr key={student.user.id}>
+                      <td style={{ padding: "12px 0", borderTop: `1px solid ${QUIZ_PALETTE.lineSoft}` }}>
+                        <div style={{ fontWeight: 700, color: QUIZ_PALETTE.ink }}>{student.user.name}</div>
+                        <div style={{ marginTop: 4, fontSize: 12, color: QUIZ_PALETTE.muted }}>{student.user.student_id}</div>
+                      </td>
+                      {student.week_cells.map((cell) => {
+                        const tone = statusTone(cell.status);
+                        return (
+                          <td key={cell.date} style={{ padding: "12px 0", borderTop: `1px solid ${QUIZ_PALETTE.lineSoft}`, textAlign: "center" }}>
+                            <span
+                              title={`${formatDate(cell.date)} ${tone.label}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 28,
+                                height: 28,
+                                borderRadius: 999,
+                                background: tone.bg,
+                                color: tone.fg,
+                                fontSize: 13,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {cell.status === "none" || cell.status === "future" ? "─" : cell.status === "wrong" ? "△" : "○"}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td style={{ padding: "12px 0", borderTop: `1px solid ${QUIZ_PALETTE.lineSoft}`, textAlign: "center", color: QUIZ_PALETTE.inkSoft, fontWeight: 700 }}>
+                        {student.week_solved}/7
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section style={{ ...sectionCardStyle, padding: 24 }}>
+            <div style={{ marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                학생별 제출 내역
+              </h2>
+              <p style={{ margin: "8px 0 0", color: QUIZ_PALETTE.inkSoft, fontSize: 14 }}>
+                각 학생 카드를 펼치면 연간 히스토리와 이번 주 제출 로그를 함께 확인할 수 있습니다.
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              {data?.admin_data.freshman_data.map((student) => {
+                const isOpen = openStudentId === student.user.id;
+                return (
+                  <article
+                    key={student.user.id}
+                    style={{
+                      borderRadius: 22,
+                      border: `1px solid ${QUIZ_PALETTE.line}`,
+                      background: QUIZ_PALETTE.surface,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenStudentId((current) => (current === student.user.id ? null : student.user.id))}
+                      style={{
+                        width: "100%",
+                        padding: "18px 20px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        alignItems: "center",
+                        background: isOpen ? QUIZ_PALETTE.surfaceTint : QUIZ_PALETTE.surface,
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: QUIZ_PALETTE.ink }}>{student.user.name}</div>
+                        <div style={{ marginTop: 6, fontSize: 13, color: QUIZ_PALETTE.inkSoft }}>
+                          {student.user.student_id} · 이번 주 {student.week_solved}일 참여 / {student.week_correct}일 정답
+                        </div>
+                      </div>
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          color: QUIZ_PALETTE.muted,
+                          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 160ms ease",
+                        }}
+                      />
+                    </button>
+
+                    {isOpen ? (
+                      <div style={{ padding: 20, display: "grid", gap: 18, borderTop: `1px solid ${QUIZ_PALETTE.lineSoft}` }}>
+                        <div style={{ overflowX: "auto" }}>
+                          <div style={{ display: "grid", gridAutoFlow: "column", gridAutoColumns: 17, gap: 0, marginBottom: 6 }}>
+                            {data.admin_data.month_labels.map((label, index) => (
+                              <div key={`${student.user.id}-${index}`} style={{ fontSize: 10, color: QUIZ_PALETTE.muted }}>
+                                {label}
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateRows: "repeat(7, 14px)", gridAutoFlow: "column", gridAutoColumns: 14, gap: 3 }}>
+                            {student.year_cells.map((cell) => {
+                              const tone = statusTone(cell.status);
+                              return (
+                                <div
+                                  key={cell.date}
+                                  title={`${cell.date} ${tone.label}${cell.count ? ` ${cell.count}회` : ""}`}
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    borderRadius: 3,
+                                    background: tone.bg,
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gap: 10 }}>
+                          {student.week_attempts_by_day.length ? (
+                            student.week_attempts_by_day.map((dayGroup) => (
+                              <div
+                                key={`${student.user.id}-${dayGroup.date}`}
+                                style={{
+                                  borderRadius: 18,
+                                  border: `1px solid ${dayGroup.date === data.admin_data.today ? QUIZ_PALETTE.brandSoftStrong : QUIZ_PALETTE.line}`,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div style={{
+                                  padding: "10px 14px",
+                                  background: dayGroup.date === data.admin_data.today ? QUIZ_PALETTE.surfaceTint : "#fafafa",
+                                  fontSize: 13,
+                                  fontWeight: 800,
+                                  color: dayGroup.date === data.admin_data.today ? QUIZ_PALETTE.brandText : QUIZ_PALETTE.ink,
+                                }}>
+                                  {dayGroup.day_ko}요일 {formatDate(dayGroup.date)} · {dayGroup.attempts.length}회
+                                </div>
+                                <div style={{ padding: 14, display: "grid", gap: 8 }}>
+                                  {dayGroup.attempts.map((attempt) => (
+                                    <div
+                                      key={attempt.id}
+                                      style={{
+                                        borderRadius: 16,
+                                        background: "#fafafa",
+                                        border: `1px solid ${QUIZ_PALETTE.lineSoft}`,
+                                        padding: "12px 14px",
+                                        display: "grid",
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                                        <div style={{ fontSize: 13, fontWeight: 800, color: QUIZ_PALETTE.ink }}>
+                                          {attempt.quiz.title}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: QUIZ_PALETTE.muted }}>
+                                          {attempt.attempt_number}차 · {formatDateTime(attempt.attempted_at)}
+                                        </div>
+                                      </div>
+                                      <div style={{ fontSize: 13, color: QUIZ_PALETTE.inkSoft }}>
+                                        제출 답안 <strong style={{ color: QUIZ_PALETTE.ink }}>{attempt.submitted_answer}</strong>
+                                      </div>
+                                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                        <span style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          padding: "6px 10px",
+                                          borderRadius: 999,
+                                          background: attempt.is_correct ? "#e8f5e9" : "#fff1ec",
+                                          color: attempt.is_correct ? QUIZ_PALETTE.successDeep : "#c2410c",
+                                          fontSize: 12,
+                                          fontWeight: 800,
+                                        }}>
+                                          {attempt.is_correct ? "정답" : "오답"}
+                                        </span>
+                                        {attempt.is_ai_flagged ? (
+                                          <span style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            padding: "6px 10px",
+                                            borderRadius: 999,
+                                            background: QUIZ_PALETTE.warningSoft,
+                                            color: QUIZ_PALETTE.warningDeep,
+                                            fontSize: 12,
+                                            fontWeight: 800,
+                                          }}>
+                                            AI 의심
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{
+                              borderRadius: 16,
+                              padding: "16px 18px",
+                              background: QUIZ_PALETTE.sand,
+                              color: QUIZ_PALETTE.inkSoft,
+                              fontSize: 14,
+                            }}>
+                              이번 주 제출한 답변이 없습니다.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
