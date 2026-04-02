@@ -30,7 +30,10 @@ type ContestListSectionProps = {
   loading: boolean;
   error: string | null;
   activeCategoryLabel: string;
+  favoriteIds: string[];
+  onOpenPreview: (contest: ContestItem) => void;
   onRetry: () => void;
+  onToggleFavorite: (contestId: string) => void;
 };
 
 export function ContestListSection({
@@ -38,7 +41,10 @@ export function ContestListSection({
   loading,
   error,
   activeCategoryLabel,
+  favoriteIds,
+  onOpenPreview,
   onRetry,
+  onToggleFavorite,
 }: ContestListSectionProps) {
   return (
     <section className="px-6 pb-10 pt-5">
@@ -88,7 +94,13 @@ export function ContestListSection({
         {!loading && !error && items.length > 0 ? (
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((contest) => (
-              <ContestCard key={contest.id} contest={contest} />
+              <ContestCard
+                key={contest.id}
+                contest={contest}
+                isFavorite={favoriteIds.includes(contest.external_id)}
+                onOpenPreview={onOpenPreview}
+                onToggleFavorite={onToggleFavorite}
+              />
             ))}
           </div>
         ) : null}
@@ -97,7 +109,17 @@ export function ContestListSection({
   );
 }
 
-function ContestCard({ contest }: { contest: ContestItem }) {
+function ContestCard({
+  contest,
+  isFavorite,
+  onOpenPreview,
+  onToggleFavorite,
+}: {
+  contest: ContestItem;
+  isFavorite: boolean;
+  onOpenPreview: (contest: ContestItem) => void;
+  onToggleFavorite: (contestId: string) => void;
+}) {
   const categoryMeta = getContestCategoryMeta(contest.category);
   const ddayMeta = getContestDdayMeta(contest.d_day_tone);
 
@@ -117,17 +139,32 @@ function ContestCard({ contest }: { contest: ContestItem }) {
           {contest.d_day_label}
         </span>
 
+        <button
+          type="button"
+          onClick={() => onToggleFavorite(contest.external_id)}
+          aria-label={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          className="absolute left-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-white/92 text-[18px] text-[#69707a] shadow-sm transition-colors hover:text-[#ff6f0f]"
+        >
+          {isFavorite ? "★" : "☆"}
+        </button>
+
         <div className="border-b border-[#ebeef2] bg-[#f7f8fa] p-4">
           {contest.image_url ? (
-            <div className="flex h-[200px] w-full items-center justify-center overflow-hidden rounded-[18px] bg-[#f1f3f5]">
+            <button
+              type="button"
+              onClick={() => onOpenPreview(contest)}
+              className="flex h-[200px] w-full items-center justify-center overflow-hidden rounded-[18px] bg-[#f1f3f5] text-left"
+            >
               <img
                 src={contest.image_url}
                 alt={contest.title}
                 className="h-full w-full object-contain"
               />
-            </div>
+            </button>
           ) : (
-            <div
+            <button
+              type="button"
+              onClick={() => onOpenPreview(contest)}
               className="flex h-[200px] w-full items-center justify-center rounded-[18px] text-[42px] font-bold"
               style={{
                 background: categoryMeta.placeholderBackground,
@@ -135,7 +172,7 @@ function ContestCard({ contest }: { contest: ContestItem }) {
               }}
             >
               {categoryMeta.emoji}
-            </div>
+            </button>
           )}
         </div>
       </div>
