@@ -107,4 +107,12 @@ export enum Responses {
     ERROR = "error",
     WARNING = "warning",
     INFO = "info",
-  }
+}
+
+// 출결 상태 옵션
+export const ATTENDANCE_STATUS_OPTIONS = [
+  { value: "present", label: "출석" },
+  { value: "late",    label: "지각" },
+  { value: "absent",  label: "결석" },
+  { value: "leave",   label: "조퇴" },
+] as const;
