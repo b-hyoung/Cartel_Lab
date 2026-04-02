@@ -72,6 +72,9 @@ echo "cron 시작 완료"
 python manage.py sync_contests &
 echo "공모전 초기 동기화 백그라운드 시작"
 
+python manage.py sync_job_sources &
+echo "job sync started in background"
+
 if [ "$#" -eq 0 ]; then
   set -- gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}" --workers 3 --timeout 120
 fi
