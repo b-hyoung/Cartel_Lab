@@ -19,7 +19,6 @@ import {
   type CertificationItem,
   type CertificationsPayload,
 } from "@/constants/certifications";
-import { CertificationsHeroSection } from "./_hero-section";
 import { CertificationsControlsSection } from "./_controls-section";
 import { CertificationsSelectorSection } from "./_selector-section";
 import { CertificationDetailModalSection } from "./_detail-modal-section";
@@ -36,7 +35,6 @@ export default function CertificationsPage() {
   const authFetch = useAuthFetch();
 
   const [items, setItems] = useState<CertificationItem[]>([]);
-  const [alerts, setAlerts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -63,10 +61,8 @@ export default function CertificationsPage() {
 
       writeRecordStorage(KNOWN_SCHEDULE_STORAGE_KEY, liveAlertResult.knownScheduleMap);
       setItems(normalizedItems);
-      setAlerts(liveAlertResult.alerts);
     } catch {
       setItems([]);
-      setAlerts([]);
       setError("자격증 목록을 불러오지 못했습니다.");
     } finally {
       setLoading(false);
@@ -198,7 +194,6 @@ export default function CertificationsPage() {
   return (
     <div style={pageShellStyle}>
       <div style={pageContainerStyle} className="space-y-6 sm:space-y-7">
-        <CertificationsHeroSection alerts={alerts} items={items} />
         <CertificationsControlsSection
           searchTerm={searchTerm}
           filter={filter}
