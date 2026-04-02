@@ -210,7 +210,7 @@ function DetailStat({ label, value }: { label: string; value: string }) {
 }
 
 function renderScheduleRows(schedule: CertificationItem["schedules"][number]) {
-  const rows = [];
+  const rows: { label: string; value: string; status?: CertificationItem["schedules"][number]["registration_status"] }[] = [];
   const add = (
     label: string,
     value?: string,
