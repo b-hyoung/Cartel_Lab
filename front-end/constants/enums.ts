@@ -78,6 +78,7 @@ export enum UserRole {
 
 // API 서브 경로를 정의 (Routes와 조합하여 사용)
 export enum ApiPaths {
+    SIGNUP = "/signup/",
     LOGIN = "/login/",
     LOGOUT = "/logout/",
     REFRESH = "/refresh/",
