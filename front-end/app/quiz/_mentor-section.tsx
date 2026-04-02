@@ -2,6 +2,7 @@
 
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
 import {
   CalendarDays,
   ChevronLeft,
@@ -203,6 +204,8 @@ export function MentorSection({
   const [showAnswers, setShowAnswers] = useState(false);
   const codeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const trapCodeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement | null>(null);
+  const backdropMouseDownRef = useRef(false);
 
   const autoResize = (element: HTMLTextAreaElement | null) => {
     if (!element) return;
@@ -243,11 +246,19 @@ export function MentorSection({
   useEffect(() => {
     if (!data?.week_days.length) return;
     const hasSelected = selectedDate && data.week_days.some((day) => day.date === selectedDate);
-    if (!hasSelected) {
-      const preferred = data.week_days.find((day) => day.date === data.today) ?? data.week_days[0];
-      setSelectedDate(preferred?.date ?? null);
+    if (!hasSelected && selectedDate) {
+      setSelectedDate(null);
     }
   }, [data, selectedDate]);
+
+  useEffect(() => {
+    if (modalOpen) return;
+    setSelectedDate(null);
+    setForm(EMPTY_FORM);
+    setFormError(null);
+    setFormMessage(null);
+    setTrapOpen(false);
+  }, [modalOpen]);
 
   const selectedDay = data?.week_days.find((day) => day.date === selectedDate) ?? null;
   const selectedListItem = selectedDay?.quiz
@@ -299,6 +310,16 @@ export function MentorSection({
     resizeCodeTextareas();
   }, [form.code_snippet, form.ai_trap_code, selectedDay?.date]);
 
+  useEffect(() => {
+    if (!modalOpen || !selectedDay || !detailPanelRef.current) return;
+
+    gsap.fromTo(
+      detailPanelRef.current,
+      { opacity: 0, y: 18, scale: 0.985 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.32, ease: "power2.out" },
+    );
+  }, [modalOpen, selectedDay?.date]);
+
   const handleFormChange = (field: keyof FormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -330,6 +351,7 @@ export function MentorSection({
         setFormMessage("문제를 등록했습니다.");
       }
       await onRefresh();
+      setModalOpen(false);
     } catch (saveError) {
       setFormError(saveError instanceof Error ? saveError.message : "문제를 저장하지 못했습니다.");
     } finally {
@@ -501,18 +523,18 @@ export function MentorSection({
                         {item.quiz.created_at ? formatDateTime(item.quiz.created_at) : "-"} · {item.quiz.created_by.name}
                       </p>
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <span style={{
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        minHeight: 26,
-                        padding: "0 8px",
-                        borderRadius: 10,
+                        minHeight: 22,
+                        padding: "0 7px",
+                        borderRadius: 9,
                         border: `1px solid ${item.quiz.scheduled_date === data.today ? "#ffd7bf" : "#f0d7c3"}`,
                         background: item.quiz.scheduled_date === data.today ? "#fff1e8" : "#fff7f1",
                         color: item.quiz.scheduled_date === data.today ? QUIZ_PALETTE.brandText : "#c76a1a",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 700,
                         lineHeight: 1,
                         whiteSpace: "nowrap",
@@ -529,13 +551,13 @@ export function MentorSection({
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        minHeight: 26,
-                        padding: "0 8px",
-                        borderRadius: 10,
+                        minHeight: 22,
+                        padding: "0 7px",
+                        borderRadius: 9,
                         border: "1px solid #f0d7c3",
                         background: "#fff7f1",
                         color: "#c76a1a",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 700,
                         lineHeight: 1,
                         whiteSpace: "nowrap",
@@ -547,13 +569,13 @@ export function MentorSection({
                           display: "inline-flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          minHeight: 26,
-                          padding: "0 8px",
-                          borderRadius: 10,
+                          minHeight: 22,
+                          padding: "0 7px",
+                          borderRadius: 9,
                           border: "1px solid #f3d6b3",
                           background: "#fff3e6",
                           color: QUIZ_PALETTE.warningDeep,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: 700,
                           lineHeight: 1,
                           whiteSpace: "nowrap",
@@ -841,7 +863,15 @@ export function MentorSection({
       {/* ── 문제 관리 모달 ── */}
       {modalOpen && (
         <div
-          onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}
+          onMouseDown={(e) => {
+            backdropMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onClick={(e) => {
+            if (backdropMouseDownRef.current && e.target === e.currentTarget) {
+              setModalOpen(false);
+            }
+            backdropMouseDownRef.current = false;
+          }}
           style={{
             position: "fixed",
             inset: 0,
@@ -926,7 +956,7 @@ export function MentorSection({
             {/* 7일 카드 그리드 */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
+              gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
               gap: 10,
               marginBottom: 24,
             }}>
@@ -970,9 +1000,9 @@ export function MentorSection({
                     style={{
                       border: cardBorder,
                       borderRadius: 12,
-                      padding: "12px 8px",
+                      padding: "10px 6px",
                       textAlign: "center",
-                      minHeight: 92,
+                      minHeight: 84,
                       cursor: cardCursor,
                       background: cardBg,
                       opacity: cardOpacity,
@@ -1009,13 +1039,16 @@ export function MentorSection({
             {!selectedDay ? (
               <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft }}>날짜를 선택하세요.</p>
             ) : (
-              <div style={{
+              <div
+                ref={detailPanelRef}
+                style={{
                 border: `2px solid ${QUIZ_PALETTE.brand}`,
                 borderRadius: 16,
                 padding: 24,
                 display: "grid",
                 gap: 20,
-              }}>
+              }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
