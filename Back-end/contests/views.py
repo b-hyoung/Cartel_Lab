@@ -1,8 +1,10 @@
 from django.db.models import F, Q
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from .models import Contest
+from .services.preview import get_contest_preview
 
 CONTEST_CATEGORIES = [
     {"label": "전체", "value": ""},
@@ -87,3 +89,9 @@ def contest_list(request):
         },
         json_dumps_params={"ensure_ascii": False},
     )
+
+
+def contest_preview(request, contest_id):
+    contest = get_object_or_404(Contest, pk=contest_id, is_active=True)
+    payload = get_contest_preview(contest)
+    return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -80,3 +81,25 @@ class ContestApiTests(TestCase):
         titles = [item["title"] for item in response.json()["items"]]
 
         self.assertNotIn("만료된 공모전", titles)
+
+    @patch("contests.views.get_contest_preview")
+    def test_contest_preview_api_returns_summary_payload(self, mocked_get_preview):
+        contest = Contest.objects.get(external_id="active-ai")
+        mocked_get_preview.return_value = {
+            "contest_id": contest.id,
+            "title": contest.title,
+            "external_url": contest.external_url,
+            "summary": "AI 서비스 아이디어 공모전의 핵심 정보를 정리한 요약입니다.",
+            "highlights": ["생성형 AI 분야 공모전입니다.", "마감일은 3일 남았습니다."],
+            "action_hint": "세부 조건은 원본 페이지에서 확인하세요.",
+            "generated_by": "ai",
+        }
+
+        response = self.client.get(reverse("contests:preview", kwargs={"contest_id": contest.id}))
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["contest_id"], contest.id)
+        self.assertIn("summary", data)
+        self.assertIn("highlights", data)
+        mocked_get_preview.assert_called_once()
