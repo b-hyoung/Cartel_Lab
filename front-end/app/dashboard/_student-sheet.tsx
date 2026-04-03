@@ -16,7 +16,7 @@ import type {
   PlannerWeeklyGoalSummary,
 } from "@/types/planner";
 import type { UserProfileSummary } from "@/types/user";
-import { sectionCardStyle } from "./_styles";
+import { fieldStyle, primaryButtonStyle, sectionCardStyle } from "./_styles";
 
 const PALETTE = DASHBOARD_PALETTE;
 const COLOR = DASHBOARD_STATUS_COLOR;
@@ -351,12 +351,37 @@ export function StudentDetailSheet({
   detail,
   loading,
   onClose,
+  onPasswordChange,
 }: {
   detail: StudentDetail | null;
   loading: boolean;
   onClose: () => void;
+  onPasswordChange: (studentId: string, newPassword: string, newPasswordConfirm: string) => Promise<string>;
 }) {
   const [selectedAchievementDay, setSelectedAchievementDay] = useState<PlannerDailyGoalItem | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  async function handlePasswordSubmit() {
+    if (!detail || passwordSaving) return;
+    setPasswordMessage(null);
+    setPasswordError(null);
+    setPasswordSaving(true);
+
+    try {
+      const message = await onPasswordChange(detail.student.student_id, newPassword, newPasswordConfirm);
+      setPasswordMessage(message);
+      setNewPassword("");
+      setNewPasswordConfirm("");
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : "비밀번호 변경 중 오류가 발생했습니다.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
 
   return (
     <div
@@ -491,6 +516,85 @@ export function StudentDetailSheet({
                   value={`${detail.planner.today.todo_summary.rate}%`}
                   caption={`${detail.planner.today.todo_summary.completed}/${detail.planner.today.todo_summary.total || 0} 완료`}
                 />
+              </div>
+            </section>
+
+            <section style={sectionCardStyle}>
+              <div style={{ padding: "18px 18px 14px", borderBottom: `1px solid ${PALETTE.lineSoft}` }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: PALETTE.ink }}>비밀번호 변경</div>
+                <div style={{ marginTop: 4, fontSize: 13, color: PALETTE.muted }}>
+                  관리자 권한으로 학생 비밀번호를 바로 재설정합니다.
+                </div>
+              </div>
+              <div style={{ padding: 18, display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: PALETTE.body }}>새 비밀번호</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="새 비밀번호 입력"
+                    autoComplete="new-password"
+                    style={fieldStyle}
+                  />
+                </div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: PALETTE.body }}>새 비밀번호 확인</label>
+                  <input
+                    type="password"
+                    value={newPasswordConfirm}
+                    onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                    placeholder="한 번 더 입력"
+                    autoComplete="new-password"
+                    style={fieldStyle}
+                  />
+                </div>
+                {passwordMessage && (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: `1px solid ${PALETTE.brandSoftStrong}`,
+                      background: PALETTE.brandSoft,
+                      color: PALETTE.brandText,
+                      padding: "11px 12px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {passwordMessage}
+                  </div>
+                )}
+                {passwordError && (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: "1px solid #fecaca",
+                      background: "#fef2f2",
+                      color: "#b91c1c",
+                      padding: "11px 12px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {passwordError}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <div style={{ fontSize: 12, color: PALETTE.muted }}>
+                    변경 후 학생에게 새 비밀번호를 따로 전달해야 합니다.
+                  </div>
+                  <button
+                    onClick={handlePasswordSubmit}
+                    disabled={passwordSaving}
+                    style={{
+                      ...primaryButtonStyle,
+                      minWidth: 112,
+                      opacity: passwordSaving ? 0.6 : 1,
+                    }}
+                  >
+                    {passwordSaving ? "저장 중..." : "비밀번호 저장"}
+                  </button>
+                </div>
               </div>
             </section>
 

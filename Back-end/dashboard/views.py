@@ -1,6 +1,7 @@
 from .api_views import (
     api_auto_checkout,
     api_cancel_delete,
+    api_change_student_password,
     api_confirm_delete,
     api_edit_attendance,
     api_main,
@@ -25,6 +26,7 @@ from .page_views import (
 __all__ = [
     "api_auto_checkout",
     "api_cancel_delete",
+    "api_change_student_password",
     "api_confirm_delete",
     "api_edit_attendance",
     "api_main",

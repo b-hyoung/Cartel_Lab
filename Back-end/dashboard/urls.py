@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     api_auto_checkout,
     api_cancel_delete,
+    api_change_student_password,
     api_confirm_delete,
     api_edit_attendance,
     api_main,
@@ -37,6 +38,7 @@ urlpatterns = [
     path("api/edit-att/", dashboard_edit_attendance, name="dashboard-api-edit-att"),
     path("api/monthly-goals/", api_monthly_attendance_goals, name="dashboard-api-monthly-goals"),
     path("api/student/<str:student_id>/detail/", api_student_detail, name="dashboard-api-student-detail"),
+    path("api/student/<str:student_id>/change-password/", api_change_student_password, name="dashboard-api-change-student-password"),
     path("api/student/<str:student_id>/schedule-delete/", api_schedule_delete, name="dashboard-api-schedule-delete"),
     path("api/student/<str:student_id>/cancel-delete/", api_cancel_delete, name="dashboard-api-cancel-delete"),
     path("api/student/<str:student_id>/confirm-delete/", api_confirm_delete, name="dashboard-api-confirm-delete"),
