@@ -102,6 +102,7 @@ def _serialize_quiz(quiz, *, include_answer=False, include_trap=False, expose_ai
         "scheduled_date": _serialize_date(quiz.scheduled_date),
         "created_at": _serialize_datetime(quiz.created_at),
         "created_by": _serialize_user(quiz.created_by),
+        "source": quiz.source,
     }
     if include_answer:
         payload["answer"] = quiz.answer
@@ -753,7 +754,7 @@ class GithubRegisterQuizView(APIView):
         if Quiz.objects.filter(scheduled_date=scheduled_date).exists():
             warning_message = f"{scheduled_date} 에 이미 문제가 등록되어 있습니다. 그래도 추가했습니다."
 
-        quiz = Quiz.objects.create(created_by=creator, **data)
+        quiz = Quiz.objects.create(created_by=creator, source=Quiz.SOURCE_GITHUB, **data)
         return Response({
             "message": f"문제가 {scheduled_date} 로 등록되었습니다.",
             "warning": warning_message,

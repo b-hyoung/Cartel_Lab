@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Trash2,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { buttonBaseStyle, codeBlockStyle, heroCardStyle, inputStyle, sectionCardStyle, sectionSubtitleStyle, sectionTitleStyle, textareaStyle, QUIZ_PALETTE } from "./_styles";
 
 export type MentorQuizAuthor = {
@@ -35,6 +36,7 @@ export type MentorQuiz = {
   created_by: MentorQuizAuthor;
   ai_trap_code: string;
   ai_trap_answer: string;
+  source: "manual" | "github";
 };
 
 export type MentorWeekDay = {
@@ -192,6 +194,7 @@ export function MentorSection({
   onRefresh,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"list" | "admin">("list");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "manual" | "github">("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -488,6 +491,33 @@ export function MentorSection({
             </p>
           </div>
 
+          {/* 출제 방식 필터 */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            {(["all", "manual", "github"] as const).map((f) => {
+              const label = f === "all" ? "전체" : f === "manual" ? "기존 방식" : "MD 파일";
+              const active = sourceFilter === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setSourceFilter(f)}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 20,
+                    border: `1px solid ${active ? QUIZ_PALETTE.brand : QUIZ_PALETTE.line}`,
+                    background: active ? QUIZ_PALETTE.brand : QUIZ_PALETTE.surface,
+                    color: active ? "#fff" : QUIZ_PALETTE.inkSoft,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
           {!data?.quiz_stats.length ? (
             <div style={{
               borderRadius: 18,
@@ -502,7 +532,7 @@ export function MentorSection({
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
-              {data.quiz_stats.map((item) => (
+              {data.quiz_stats.filter((item) => sourceFilter === "all" || item.quiz.source === sourceFilter).map((item) => (
                 <article
                   key={item.quiz.id}
                   style={{
@@ -516,9 +546,22 @@ export function MentorSection({
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
-                        {item.quiz.title}
-                      </h3>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.04em", color: QUIZ_PALETTE.ink }}>
+                          {item.quiz.title}
+                        </h3>
+                        <span style={{
+                          padding: "2px 8px",
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: item.quiz.source === "github" ? "#e8f5e9" : QUIZ_PALETTE.brandSoft,
+                          color: item.quiz.source === "github" ? "#2e7d32" : QUIZ_PALETTE.brandText,
+                          border: `1px solid ${item.quiz.source === "github" ? "#c8e6c9" : QUIZ_PALETTE.brandSoftStrong}`,
+                        }}>
+                          {item.quiz.source === "github" ? "MD 파일" : "기존 방식"}
+                        </span>
+                      </div>
                       <p style={{ margin: "8px 0 0", fontSize: 13, color: QUIZ_PALETTE.inkSoft }}>
                         {item.quiz.created_at ? formatDateTime(item.quiz.created_at) : "-"} · {item.quiz.created_by.name}
                       </p>
@@ -587,7 +630,13 @@ export function MentorSection({
                   </div>
 
                   {item.quiz.code_snippet ? <pre style={listCodeBlockStyle}>{item.quiz.code_snippet}</pre> : null}
-                  <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft, lineHeight: 1.65 }}>{item.quiz.question}</p>
+                  {item.quiz.source === "github" ? (
+                    <div style={{ color: QUIZ_PALETTE.inkSoft, lineHeight: 1.65, fontSize: 14 }}>
+                      <ReactMarkdown>{item.quiz.question}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, color: QUIZ_PALETTE.inkSoft, lineHeight: 1.65 }}>{item.quiz.question}</p>
+                  )}
                   <div style={{ display: "grid", gap: 4 }}>
                     <div style={{ fontSize: 12, color: QUIZ_PALETTE.brandText, fontWeight: 800 }}>정답</div>
                     {showAnswers ? (
