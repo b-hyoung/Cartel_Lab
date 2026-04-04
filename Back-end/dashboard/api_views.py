@@ -2,6 +2,8 @@ import calendar as cal_module
 import json as _json
 from datetime import date, datetime, timedelta, time as dtime
 
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -520,6 +522,41 @@ def api_confirm_delete(request, student_id):
     name = student.name
     student.delete()
     return JsonResponse({"status": "success", "message": f"{name} 삭제됨"})
+
+
+@csrf_exempt
+@require_POST
+def api_change_student_password(request, student_id):
+    user = _get_token_user(request)
+    if not user and request.user.is_authenticated:
+        user = request.user
+    if not user or not user.is_staff:
+        return JsonResponse({"error": "관리자 권한이 필요합니다."}, status=403)
+
+    student = get_object_or_404(User, student_id=student_id, is_staff=False)
+
+    try:
+        data = _json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"error": "잘못된 요청입니다."}, status=400)
+
+    new_password = str(data.get("new_password", "") or "")
+    new_password_confirm = str(data.get("new_password_confirm", "") or "")
+
+    if not new_password:
+        return JsonResponse({"error": "새 비밀번호를 입력해주세요."}, status=400)
+
+    if new_password != new_password_confirm:
+        return JsonResponse({"error": "비밀번호가 일치하지 않습니다."}, status=400)
+
+    try:
+        validate_password(new_password, student)
+    except ValidationError as exc:
+        return JsonResponse({"error": " ".join(exc.messages)}, status=400)
+
+    student.set_password(new_password)
+    student.save(update_fields=["password"])
+    return JsonResponse({"status": "success", "message": f"{student.name} 비밀번호를 변경했습니다."})
 
 
 @csrf_exempt

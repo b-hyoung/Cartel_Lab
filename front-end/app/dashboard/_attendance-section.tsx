@@ -403,6 +403,19 @@ export function WeeklyAttendanceSection({
     onRefresh();
   }
 
+  async function handlePasswordChange(studentId: string, newPassword: string, newPasswordConfirm: string) {
+    const result = await authFetch(`${Routes.ADMIN}/api/student/${studentId}/change-password/`, {
+      method: "POST",
+      body: JSON.stringify({
+        new_password: newPassword,
+        new_password_confirm: newPasswordConfirm,
+      }),
+    });
+    return typeof result?.message === "string" && result.message.trim()
+      ? result.message
+      : "비밀번호를 변경했습니다.";
+  }
+
   const weekCells = students[0]?.week ?? [];
   const tableColSpan = 4 + (showAttendance ? weekCells.length : 0);
 
@@ -661,6 +674,7 @@ export function WeeklyAttendanceSection({
           detail={studentDetail}
           loading={studentDetailLoading}
           onClose={handleCloseStudentDetail}
+          onPasswordChange={handlePasswordChange}
         />
       )}
 
