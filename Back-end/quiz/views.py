@@ -724,7 +724,7 @@ class GithubNextAvailableDateView(APIView):
 
 def _verify_github_token(request):
     token = request.headers.get("X-GitHub-Token", "")
-    expected = getattr(settings, "GITHUB_WEBHOOK_SECRET", "")
+    expected = getattr(settings, "WEBHOOK_SECRET", "")
     if not expected or token != expected:
         return False
     return True
