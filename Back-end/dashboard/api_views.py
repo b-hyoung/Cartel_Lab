@@ -111,21 +111,62 @@ def api_bulk_checkin(request):
     if not user or not user.is_staff:
         return JsonResponse({"error": "관리자 권한이 필요합니다."}, status=403)
 
-    today = timezone.localdate()
+    try:
+        data = _json.loads(request.body) if request.body else {}
+        date_str = data.get("date", "")
+    except Exception:
+        data, date_str = {}, ""
+
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except Exception:
+            return JsonResponse({"error": "날짜 형식 오류 (YYYY-MM-DD)"}, status=400)
+    else:
+        target_date = timezone.localdate()
+
+    check_in_str = data.get("check_in", "09:00")
+    try:
+        ci_time = datetime.strptime(check_in_str, "%H:%M").time()
+    except Exception:
+        ci_time = dtime(9, 0, 0)
+
     existing_user_ids = AttendanceRecord.objects.filter(
-        attendance_date=today,
+        attendance_date=target_date,
     ).values_list("user_id", flat=True)
     students = User.objects.filter(is_staff=False).exclude(id__in=existing_user_ids)
     count = students.count()
     if count == 0:
-        return JsonResponse({"status": "ok", "message": "모든 학생이 이미 출결 처리되어 있습니다."})
+        return JsonResponse({"status": "ok", "message": f"{target_date.strftime('%m/%d')} 모든 학생이 이미 출결 처리되어 있습니다."})
 
-    records = [AttendanceRecord(user=s, status="present") for s in students]
-    AttendanceRecord.objects.bulk_create(records)
+    tz = timezone.get_current_timezone()
+    ci_dt = timezone.make_aware(datetime.combine(target_date, ci_time), tz)
+    now = timezone.now()
+    student_ids = list(students.values_list("id", flat=True))
+
+    # auto_now_add를 임시 해제하여 지정 날짜로 생성
+    auto_fields = []
+    for fname in ("attendance_date", "check_in_at", "created_at"):
+        f = AttendanceRecord._meta.get_field(fname)
+        if f.auto_now_add:
+            f.auto_now_add = False
+            auto_fields.append(f)
+    try:
+        records = [
+            AttendanceRecord(
+                user_id=sid, status="present",
+                attendance_date=target_date, check_in_at=ci_dt, created_at=now,
+            )
+            for sid in student_ids
+        ]
+        AttendanceRecord.objects.bulk_create(records)
+    finally:
+        for f in auto_fields:
+            f.auto_now_add = True
 
     return JsonResponse({
         "status": "ok",
-        "message": f"오늘({today.strftime('%m/%d')}) 미출결 {count}명을 출석 처리했습니다.",
+        "message": f"{target_date.strftime('%m/%d')} 미출결 {count}명을 출석 처리했습니다.",
         "count": count,
     })
 
@@ -180,21 +221,41 @@ def api_auto_checkout(request):
     if not user or not user.is_staff:
         return JsonResponse({"error": "관리자 권한이 필요합니다."}, status=403)
 
-    target_date = timezone.localdate() - timedelta(days=1)
+    try:
+        data = _json.loads(request.body) if request.body else {}
+        date_str = data.get("date", "")
+        co_str = data.get("check_out", "17:00")
+    except Exception:
+        data, date_str, co_str = {}, "", "17:00"
+
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except Exception:
+            return JsonResponse({"error": "날짜 형식 오류 (YYYY-MM-DD)"}, status=400)
+    else:
+        target_date = timezone.localdate() - timedelta(days=1)
+
+    try:
+        co_time = datetime.strptime(co_str, "%H:%M").time()
+    except Exception:
+        co_time = dtime(17, 0, 0)
+
     records = AttendanceRecord.objects.filter(
         attendance_date=target_date,
         check_out_at__isnull=True,
     )
     count = records.count()
     if count == 0:
-        return JsonResponse({"status": "ok", "message": "처리할 미퇴실 기록이 없습니다."})
+        return JsonResponse({"status": "ok", "message": f"{target_date.strftime('%m/%d')} 처리할 미퇴실 기록이 없습니다."})
 
-    checkout_time = timezone.make_aware(datetime.combine(target_date, dtime(17, 0, 0)))
+    tz = timezone.get_current_timezone()
+    checkout_time = timezone.make_aware(datetime.combine(target_date, co_time), tz)
     records.update(check_out_at=checkout_time)
 
     return JsonResponse({
         "status": "ok",
-        "message": f"{target_date.strftime('%m/%d')} 미퇴실 {count}명을 오후 5시로 처리했습니다.",
+        "message": f"{target_date.strftime('%m/%d')} 미퇴실 {count}명을 {co_str}로 처리했습니다.",
         "count": count,
     })
 

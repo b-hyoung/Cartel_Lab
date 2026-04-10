@@ -134,13 +134,20 @@ function LocationSettingCard({
   );
 }
 
-function AutoCheckoutCard({ authFetch }: { authFetch: AuthFetch }) {
+function AutoCheckoutCard({ authFetch, onRefresh }: { authFetch: AuthFetch; onRefresh: () => void }) {
   const [message, setMessage] = useState("");
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const [date, setDate] = useState(yesterday);
+  const [coTime, setCoTime] = useState("17:00");
 
   async function handleAutoCheckout() {
     setMessage("처리 중...");
-    const result = await authFetch(`${Routes.ADMIN}/api/auto-checkout/`, { method: "POST" }).catch(() => null);
+    const result = await authFetch(`${Routes.ADMIN}/api/auto-checkout/`, {
+      method: "POST",
+      body: JSON.stringify({ date, check_out: coTime }),
+    }).catch(() => null);
     setMessage(result?.message ?? "완료");
+    if (result?.status === "ok") onRefresh();
   }
 
   return (
@@ -149,22 +156,12 @@ function AutoCheckoutCard({ authFetch }: { authFetch: AuthFetch }) {
         미퇴실 일괄 처리
       </h3>
       <p style={{ margin: "8px 0 16px", fontSize: 13, lineHeight: 1.65, color: PALETTE.muted }}>
-        어제 퇴실을 안 찍은 인원을 오후 5시 기준으로 빠르게 정리합니다.
+        선택한 날짜의 미퇴실 인원을 지정 시간으로 일괄 처리합니다.
       </p>
 
-      <div
-        style={{
-          borderRadius: 16,
-          background: PALETTE.surfaceSubtle,
-          border: `1px solid ${PALETTE.line}`,
-          padding: 14,
-          marginBottom: 16,
-          fontSize: 13,
-          lineHeight: 1.7,
-          color: PALETTE.body,
-        }}
-      >
-        반복 확인 전에 한 번에 정리하는 운영용 액션입니다.
+      <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 12 }}>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...fieldStyle, width: 150 }} />
+        <input type="time" value={coTime} onChange={(e) => setCoTime(e.target.value)} style={{ ...fieldStyle, width: 112 }} />
       </div>
 
       <button
@@ -189,10 +186,16 @@ function AutoCheckoutCard({ authFetch }: { authFetch: AuthFetch }) {
 
 function BulkCheckinCard({ authFetch, onRefresh }: { authFetch: AuthFetch; onRefresh: () => void }) {
   const [message, setMessage] = useState("");
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [ciTime, setCiTime] = useState("09:00");
 
   async function handleBulkCheckin() {
     setMessage("처리 중...");
-    const result = await authFetch(`${Routes.ADMIN}/api/bulk-checkin/`, { method: "POST" }).catch(() => null);
+    const result = await authFetch(`${Routes.ADMIN}/api/bulk-checkin/`, {
+      method: "POST",
+      body: JSON.stringify({ date, check_in: ciTime }),
+    }).catch(() => null);
     setMessage(result?.message ?? "완료");
     if (result?.status === "ok") onRefresh();
   }
@@ -203,22 +206,12 @@ function BulkCheckinCard({ authFetch, onRefresh }: { authFetch: AuthFetch; onRef
         전체 출결 처리
       </h3>
       <p style={{ margin: "8px 0 16px", fontSize: 13, lineHeight: 1.65, color: PALETTE.muted }}>
-        오늘 출결 기록이 없는 학생 전원을 출석 처리합니다. (당일만 가능)
+        선택한 날짜의 미출결 학생 전원을 출석 처리합니다.
       </p>
 
-      <div
-        style={{
-          borderRadius: 16,
-          background: PALETTE.surfaceSubtle,
-          border: `1px solid ${PALETTE.line}`,
-          padding: 14,
-          marginBottom: 16,
-          fontSize: 13,
-          lineHeight: 1.7,
-          color: PALETTE.body,
-        }}
-      >
-        미출결 학생을 한 번에 출석 처리하는 운영용 액션입니다.
+      <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 12 }}>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...fieldStyle, width: 150 }} />
+        <input type="time" value={ciTime} onChange={(e) => setCiTime(e.target.value)} style={{ ...fieldStyle, width: 112 }} />
       </div>
 
       <button
@@ -359,7 +352,7 @@ export function SettingsPanel({
         <LocationSettingCard setting={locationSetting} authFetch={authFetch} onRefresh={onRefresh} />
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <AutoCheckoutCard authFetch={authFetch} />
+          <AutoCheckoutCard authFetch={authFetch} onRefresh={onRefresh} />
           <BulkCheckinCard authFetch={authFetch} onRefresh={onRefresh} />
           <TimeSettingCard setting={timeSetting} authFetch={authFetch} onRefresh={onRefresh} />
         </div>
