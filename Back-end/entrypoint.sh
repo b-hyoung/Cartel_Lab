@@ -75,6 +75,36 @@ echo "공모전 초기 동기화 백그라운드 시작"
 python manage.py sync_job_sources &
 echo "job sync started in background"
 
+python manage.py shell -c "
+from users.models import User
+mapping = {
+    '김민혁': '1491998723918659756',
+    '황현준': '995983919344263218',
+    '유현기': '422290087464665089',
+    '임찬영': '882589449643507762',
+    '조우진': '1478648494095990959',
+}
+for name, discord_id in mapping.items():
+    try:
+        u = User.objects.get(name=name)
+        if u.discord_id != discord_id:
+            u.discord_id = discord_id
+            u.save(update_fields=['discord_id'])
+            print(f'{name} -> {discord_id} 매핑 완료')
+        else:
+            print(f'{name} 이미 매핑됨')
+    except User.DoesNotExist:
+        print(f'{name} 유저 없음, 건너뜀')
+"
+echo "디스코드 ID 매핑 완료"
+
+if [ -n "$DISCORD_BOT_TOKEN" ] && [ -n "$DISCORD_CHANNEL_ID" ]; then
+  python manage.py run_discord_bot &
+  echo "디스코드 봇 백그라운드 시작"
+else
+  echo "DISCORD_BOT_TOKEN 미설정, 디스코드 봇 건너뜀"
+fi
+
 if [ "$#" -eq 0 ]; then
   set -- gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}" --workers 3 --timeout 120
 fi
