@@ -1,7 +1,10 @@
 import asyncio
+import hashlib
 import logging
+import random
 import re
 import time as _time
+from collections import defaultdict
 import discord
 import holidays
 from discord.ext import commands, tasks
@@ -31,8 +34,141 @@ REGISTER_CMD_PREFIXES = ('ㄷㄹ', '등록')
 ALARM_ON_CMDS = {'전체알람켜기', '알람켜', '알람온'}
 ALARM_OFF_CMDS = {'전체알람끄기', '알람꺼', '알람오프'}
 ALARM_STATUS_CMDS = {'알람상태', '알람'}
+LUNCH_CMDS = {'점심', '점심메뉴'}
+DINNER_CMDS = {'저녁', '저녁메뉴'}
+SELF_DESTRUCT_CMDS = {'자폭', 'ㅈㅍ', '!자폭'}
+
+
+_LUNCH_MENUS = [
+    "돈까스", "김치찌개", "비빔밥", "냉면", "국밥",
+    "짜장면", "짬뽕", "탕수육", "마라탕", "양꼬치",
+    "파스타", "피자", "샐러드", "햄버거", "샌드위치",
+    "초밥", "라멘", "우동", "돈부리", "오므라이스",
+    "김밥", "떡볶이", "라면", "순두부찌개", "갈비탕",
+    "삼계탕", "해장국", "설렁탕", "칼국수", "죽",
+]
+
+
+_DINNER_MENUS = [
+    "삼겹살", "치킨", "족발", "보쌈", "곱창",
+    "스테이크", "파스타", "피자", "돈까스", "초밥",
+    "회", "마라탕", "양꼬치", "짜장면", "탕수육",
+    "햄버거", "부대찌개", "감자탕", "김치찌개", "순대국",
+    "라멘", "우동", "규동", "찜닭", "닭갈비",
+    "샐러드", "샌드위치", "핫도그", "오므라이스", "덮밥",
+]
+
+
+_KEYWORD_REACTIONS_RAW = {
+    '배고파': '나도 🍱',
+    '배고프': '나도 🍱',
+    '졸려': '커피 한 잔 ☕',
+    '졸리': '커피 한 잔 ☕',
+    '피곤': '힘내요 💪',
+    '퇴근': '아직이죠... 🫡',
+    '집가고싶': '저도요 😭',
+    '집가자': '같이 가요',
+    '월요일': '끔찍하죠',
+    '금요일': '🎉 불금',
+    '주말': '기다려집니다',
+    '시험': '화이팅 📚',
+    '과제': '저도 도와드리고 싶지만...',
+    '힘들': '힘내요 💪',
+}
+# 긴 키워드가 먼저 매치되도록 길이 내림차순 정렬 (예: '집가고싶' 이 '집가자' 보다 먼저)
+_KEYWORD_REACTIONS = dict(
+    sorted(_KEYWORD_REACTIONS_RAW.items(), key=lambda kv: -len(kv[0]))
+)
+
+
+_self_destruct_cooldown = {}  # discord_user_id -> monotonic timestamp
+
+
+_NUMBER_REACTIONS = {
+    '777': '🎰 행운의 숫자',
+    '1234': '순서대로 치는 거 귀엽네요',
+    '404': '🔍 찾을 수 없음',
+    '42': '우주의 답이죠',
+    '100': '💯 만점',
+    '911': '긴급 상황?',
+    '007': '🕴️ James Bond',
+}
 
 _KR_HOLIDAYS = holidays.country_holidays('KR')
+
+
+# ── 이스터에그 상태 ──
+_spam_counters = defaultdict(int)  # (user_pk, date_iso) -> 중복 ㅊㅅ 카운트
+_laugh_streak = 0                   # ㅋ/ㅎ 전용 메시지 연속 카운트
+
+
+_FORTUNES = [
+    "오늘 마시는 커피에 정답이 숨어 있다.",
+    "책상 서랍에 있는 것 중 하나가 오늘 사라질 것이다.",
+    "오늘 말 한 마디로 누군가를 웃게 할 수 있다.",
+    "예정에 없던 간식이 생길 것이다.",
+    "노력은 배신하지 않는다. 단, 늦게 올 뿐이다.",
+    "3번째로 만나는 사람이 행운을 가져다 준다.",
+    "오늘 쓰는 코드 중에 버그가 하나 숨어 있다.",
+    "점심 메뉴를 바꿀 용기를 내라.",
+    "가장 싫어하던 일이 오늘은 뜻밖의 기회다.",
+    "충동구매는 오후 3시 이후가 위험하다.",
+    "연락 안 하던 사람에게 소식이 올 수도 있다.",
+    "오늘 입은 옷 색깔이 오늘의 행운을 결정한다.",
+    "뜻밖의 장소에서 중요한 힌트를 얻는다.",
+    "과거의 수고가 오늘 빛을 본다.",
+    "오늘 누군가의 진심 어린 말을 잘 들어라.",
+    "화요일인 줄 알았는데 아닐 수도 있다.",
+    "오늘의 '그만 먹어야지'는 통하지 않는다.",
+    "버리지 못한 것 중 하나가 드디어 쓸모를 찾는다.",
+    "오늘 고민은 내일이면 사소해진다.",
+    "한 번 더 확인하면 실수를 막는다.",
+    "오늘의 침묵은 금이다.",
+    "예상 못한 지출이 있지만 괜찮다.",
+    "평소와 다른 길로 가보라.",
+    "오늘의 미소 한 번이 누군가의 하루를 바꾼다.",
+    "이메일 답장은 퇴근 전에 하라.",
+    "오늘 받은 메시지 중 하나가 중요한 기회일 수도.",
+    "저녁 약속은 잘 풀린다.",
+    "오늘 만나는 사람 중 한 명이 당신의 페이스메이커가 된다.",
+    "자료 백업을 해두면 마음이 편하다.",
+    "오늘은 조용히 있는 게 최선이다.",
+]
+
+
+_ABSENT_MESSAGES = [
+    "😴 네 편히 쉬세요",
+    "아프면 어쩔 수 없죠",
+    "푹 쉬세요 🛏️",
+    "내일 봐요 👋",
+    "그래 오늘은 쉬자",
+    "알겠어요 🫡",
+    "🫥 사라집니다",
+    "오늘 하루 잘 보내세요",
+]
+
+
+def _daily_fortune(user_pk, today):
+    """유저 + 날짜 기반 해시 → 같은 날 여러 번 ㅊㅅ 해도 같은 운세."""
+    seed = f"{user_pk}-{today.isoformat()}"
+    idx = int(hashlib.md5(seed.encode()).hexdigest(), 16) % len(_FORTUNES)
+    return _FORTUNES[idx]
+
+
+def _bump_spam_count(user_pk, today):
+    key = (user_pk, today.isoformat())
+    _spam_counters[key] += 1
+    return _spam_counters[key]
+
+
+def _spam_message(count):
+    if count <= 1:
+        return "이미 출결됐어요 그만해"
+    if count <= 3:
+        return "진짜 그만 😠"
+    if count <= 6:
+        return "🤬 (경고)"
+    return "🗿"
 
 
 _CONN_ERR_HINTS = (
@@ -100,13 +236,13 @@ def _get_user_by_discord_id(discord_id: str):
 
 @_with_db_retry
 def _do_check_in(user):
-    """출석 처리. (성공 타입, 에러 메시지) 중 하나 반환."""
+    """출석 처리. (성공 타입, 에러 메시지, 성공 메시지) 3-tuple."""
     today = timezone.localdate()
-    now_time = timezone.localtime().time()
+    now = timezone.localtime()
     time_setting = _get_time_setting()
 
     status = "present"
-    if time_setting and now_time > time_setting.check_in_deadline:
+    if time_setting and now.time() > time_setting.check_in_deadline:
         status = "late"
 
     record, created = AttendanceRecord.objects.get_or_create(
@@ -116,38 +252,79 @@ def _do_check_in(user):
     )
 
     if not created:
-        return None, "이미 출결됐어요 그만해"
+        count = _bump_spam_count(user.pk, today)
+        return None, _spam_message(count), None
 
-    return "check_in", None
+    # 성공 메시지 구성. 1등 판정은 race 안전하게 pk 비교로.
+    earliest_pk = (
+        AttendanceRecord.objects
+        .filter(attendance_date=today)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+        .first()
+    )
+    is_first_today = earliest_pk == record.pk
+
+    head_parts = ["출석됐어요!"]
+    if status == "late":
+        head_parts.append("⏰ 지각")
+    if is_first_today:
+        head_parts.append("🥇 오늘의 1등!")
+    if now.hour < 5:
+        head_parts.append("😨 이 시간에?")
+    elif now.hour < 8:
+        head_parts.append("👍 일찍 왔네요")
+    if today.weekday() == 0:
+        head_parts.append("🫠 월요일 화이팅...")
+    if today in _KR_HOLIDAYS:
+        hname = _KR_HOLIDAYS.get(today)
+        head_parts.append(f"🫡 {hname}인데 출근이라니...")
+
+    fortune = _daily_fortune(user.pk, today)
+    display_name = user.name or "당신"
+    message_text = " ".join(head_parts) + f"\n🔮 오늘의 {display_name} 운세: \"{fortune}\""
+
+    return "check_in", None, message_text
 
 
 @_with_db_retry
 def _do_check_out(user):
-    """퇴실 처리."""
+    """퇴실 처리. 3-tuple 반환."""
     today = timezone.localdate()
-    now_time = timezone.localtime().time()
+    now = timezone.localtime()
 
     try:
         record = AttendanceRecord.objects.get(user=user, attendance_date=today)
     except AttendanceRecord.DoesNotExist:
-        return None, "출석 기록이 없어요. 먼저 ㅊㅅ 해주세요."
+        return None, "출석 기록이 없어요. 먼저 ㅊㅅ 해주세요.", None
 
     if record.check_out_at:
-        return None, "이미 퇴실했어요 그만해"
+        return None, "이미 퇴실했어요 그만해", None
 
     time_setting = _get_time_setting()
-    if time_setting and now_time < time_setting.check_out_minimum:
+    is_early_leave = False
+    if time_setting and now.time() < time_setting.check_out_minimum:
         if record.status == "present":
             record.status = "leave"
+            is_early_leave = True
 
     record.check_out_at = timezone.now()
     record.save()
-    return "check_out", None
+
+    head_parts = ["퇴실됐어요!"]
+    if is_early_leave:
+        head_parts.append("(조퇴 처리)")
+    if today.weekday() == 4:
+        head_parts.append("🎉 좋은 주말 보내세요!")
+    if now.hour >= 22:
+        head_parts.append("🌙 오늘도 고생하셨어요")
+
+    return "check_out", None, " ".join(head_parts)
 
 
 @_with_db_retry
 def _do_absent(user):
-    """결석 처리."""
+    """결석 처리. 3-tuple 반환."""
     today = timezone.localdate()
 
     record, created = AttendanceRecord.objects.get_or_create(
@@ -157,9 +334,9 @@ def _do_absent(user):
     )
 
     if not created:
-        return None, "이미 처리됐어요 그만해"
+        return None, "이미 처리됐어요 그만해", None
 
-    return "absent", None
+    return "absent", None, random.choice(_ABSENT_MESSAGES)
 
 
 def _chunk_lines(lines, sep="\n", limit=1900):
@@ -204,6 +381,38 @@ class AttendanceBot(commands.Bot):
 
         content = message.content.strip()
 
+        # 이스터에그: ㅋ/ㅎ 만 연속 5번이면 봇이 끼어든다
+        global _laugh_streak
+        if content and len(content) >= 2 and all(c in 'ㅋㅎ' for c in content):
+            _laugh_streak += 1
+            if _laugh_streak >= 5:
+                _laugh_streak = 0
+                try:
+                    await message.channel.send("뭐가 웃김 ㅎ")
+                except Exception:
+                    pass
+            return
+        else:
+            _laugh_streak = 0
+
+        # 이스터에그: 특정 숫자 정확 매치
+        if content in _NUMBER_REACTIONS:
+            try:
+                await message.channel.send(_NUMBER_REACTIONS[content])
+            except Exception:
+                pass
+            return
+
+        # 이스터에그: 키워드 substring 매치 (짧은 메시지만)
+        if len(content) <= 20:
+            for kw, reply in _KEYWORD_REACTIONS.items():
+                if kw in content:
+                    try:
+                        await message.channel.send(reply)
+                    except Exception:
+                        pass
+                    return
+
         if content in CHECK_IN_CMDS:
             await self._handle_command(message, _do_check_in)
         elif content in CHECK_OUT_CMDS:
@@ -220,6 +429,12 @@ class AttendanceBot(commands.Bot):
             await self._handle_alarm_toggle(message, enable=False)
         elif content in ALARM_STATUS_CMDS:
             await self._handle_alarm_status(message)
+        elif content in LUNCH_CMDS:
+            await self._handle_meal_suggest(message, '점심', _LUNCH_MENUS)
+        elif content in DINNER_CMDS:
+            await self._handle_meal_suggest(message, '저녁', _DINNER_MENUS)
+        elif content in SELF_DESTRUCT_CMDS:
+            await self._handle_self_destruct(message)
         elif content.split(maxsplit=1)[0] in REGISTER_CMD_PREFIXES:
             await self._handle_register(message)
 
@@ -233,15 +448,19 @@ class AttendanceBot(commands.Bot):
             return
 
         try:
-            success, error_msg = await sync_to_async(handler)(user)
+            result = await sync_to_async(handler)(user)
         except Exception as e:
             await message.channel.send(
                 f"{message.author.mention} 처리 중 오류가 발생했어요: `{type(e).__name__}: {e}`"
             )
             return
 
+        success_type, error_msg, success_text = result
+
         if error_msg:
             await message.channel.send(f"{message.author.mention} {error_msg}")
+        elif success_text:
+            await message.channel.send(f"{message.author.mention} {success_text}")
         else:
             await message.add_reaction("✅")
 
@@ -463,6 +682,116 @@ class AttendanceBot(commands.Bot):
         elif not enabled:
             lines.append("→ 운영진이 전체 알람을 꺼둔 상태")
         await message.channel.send("\n".join(lines))
+
+    async def _handle_meal_suggest(self, message, label, pool):
+        """점심/저녁 메뉴 랜덤 추천."""
+        first = random.choice(pool)
+        alt_pool = [m for m in pool if m != first]
+        second = random.choice(alt_pool) if alt_pool else first
+        await message.channel.send(
+            f"{message.author.mention} 🍚 오늘 {label}: **{first}** (아니면 **{second}**)"
+        )
+
+    async def _handle_self_destruct(self, message):
+        """자폭 명령: 카운트다운 → 초대링크 DM → 강퇴."""
+        author = message.author
+        channel = message.channel
+
+        # 서버 주인 차단 (Discord 가 owner kick 을 거부하므로 friendly fail)
+        if message.guild and message.guild.owner_id == author.id:
+            await channel.send(
+                f"{author.mention} 서버 주인은 자폭 못 해요 👑"
+            )
+            return
+
+        # 60초 per-user 쿨다운
+        now_mono = _time.monotonic()
+        last = _self_destruct_cooldown.get(author.id, 0.0)
+        if now_mono - last < 60:
+            remaining = int(60 - (now_mono - last))
+            await channel.send(
+                f"{author.mention} 아직 자폭 쿨타임이에요. {remaining}초 남음 ⏳"
+            )
+            return
+        _self_destruct_cooldown[author.id] = now_mono
+
+        # 카운트다운 3초
+        try:
+            countdown_msg = await channel.send(f"{author.mention} 💣 자폭 시퀀스 시작... 3...")
+            await asyncio.sleep(1)
+            await countdown_msg.edit(content=f"{author.mention} 💣 자폭 시퀀스... 2...")
+            await asyncio.sleep(1)
+            await countdown_msg.edit(content=f"{author.mention} 💣 자폭 시퀀스... 1...")
+            await asyncio.sleep(1)
+            await countdown_msg.edit(content=f"{author.mention} 💥")
+        except Exception:
+            logger.exception("self-destruct countdown failed user=%s", author.id)
+            return
+
+        # 초대 링크 생성 (강퇴 전에 먼저, 1회용 1시간 유효)
+        try:
+            invite = await channel.create_invite(
+                max_uses=1,
+                max_age=3600,
+                unique=True,
+                reason=f"자폭 재초대 ({author})",
+            )
+        except discord.Forbidden as e:
+            logger.warning("self-destruct invite forbidden user=%s code=%s", author.id, getattr(e, 'code', None))
+            await channel.send(
+                f"{author.mention} 초대 링크 생성 권한이 없어서 자폭 실패 😅"
+            )
+            return
+        except Exception as e:
+            logger.exception("self-destruct invite failed user=%s", author.id)
+            await channel.send(f"{author.mention} 자폭 실패: `{type(e).__name__}: {e}`")
+            return
+
+        # DM 발송 (강퇴 전에, 공유 서버 있을 때 더 잘 감)
+        try:
+            await author.send(
+                f"💣 자폭당하셨네요.\n"
+                f"🎟️ 1시간 유효한 1회용 재초대: {invite.url}\n"
+                f"돌아올 준비 되면 링크 눌러주세요."
+            )
+        except discord.Forbidden as e:
+            logger.info("self-destruct DM blocked user=%s code=%s", author.id, getattr(e, 'code', None))
+            try:
+                await invite.delete(reason="DM 차단으로 자폭 취소")
+            except Exception:
+                pass
+            await channel.send(
+                f"{author.mention} DM 이 차단돼 있어서 초대 링크 못 보냄. 자폭 취소 😂"
+            )
+            return
+        except Exception as e:
+            logger.exception("self-destruct DM failed user=%s", author.id)
+            await channel.send(
+                f"{author.mention} DM 발송 실패: `{type(e).__name__}: {e}`"
+            )
+            return
+
+        # 2초 더 드라마틱하게 기다린 후 강퇴 (총 ~5초)
+        await asyncio.sleep(2)
+
+        # 강퇴 실행
+        try:
+            display = getattr(author, 'display_name', None) or author.name
+            await author.kick(reason="자폭 명령 실행")
+            logger.info("self-destruct executed user=%s", author.id)
+            await channel.send(
+                f"🚀 {display} 님이 자폭했습니다. DM 으로 재초대 링크 보냄."
+            )
+        except discord.Forbidden as e:
+            logger.warning("self-destruct kick forbidden user=%s code=%s", author.id, getattr(e, 'code', None))
+            await channel.send(
+                f"{author.mention} 강퇴 권한 부족 (봇 role 이 대상보다 낮음) 😅"
+            )
+        except Exception as e:
+            logger.exception("self-destruct kick failed user=%s", author.id)
+            await channel.send(
+                f"{author.mention} 강퇴 실패: `{type(e).__name__}: {e}`"
+            )
 
     # ── 스케줄러: A반 기본 ──
 
