@@ -744,6 +744,21 @@ class AttendanceBot(commands.Bot):
                 f"{message.author.mention} 이미 `{user.name}` (학번 `{user.student_id}`) 으로 매핑돼 있어요."
             )
         elif result == 'registered':
+            if message.guild:
+                roles_to_add = []
+                for role_name in ('출첵인원', '팀핏짜'):
+                    role = discord.utils.get(message.guild.roles, name=role_name)
+                    if role:
+                        roles_to_add.append(role)
+                if roles_to_add:
+                    try:
+                        await message.author.add_roles(
+                            *roles_to_add, reason="ㄷㄹ 등록 시 자동 부여"
+                        )
+                    except Exception:
+                        logger.exception(
+                            "auto role grant failed user=%s", message.author.id
+                        )
             await message.channel.send(
                 f"{message.author.mention} ✅ `{user.name}` (학번 `{user.student_id}`) 등록 완료. "
                 f"이제 ㅊㅅ/ㅌㅅ 사용 가능."
