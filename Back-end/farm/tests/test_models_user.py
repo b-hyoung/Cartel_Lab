@@ -26,7 +26,7 @@ def test_userfarm_defaults(user):
 @pytest.mark.django_db
 def test_useranimal_defaults_and_ordering(user):
     farm = UserFarm.objects.create(user=user, dex_no=1)
-    species = Species.objects.create(code="chick", name="병아리", rarity="N", description="", stages=[])
+    species = Species.objects.create(code="_t_chick", name="병아리", rarity="N", description="", stages=[])
     a1 = UserAnimal.objects.create(farm=farm, species=species)
     a2 = UserAnimal.objects.create(farm=farm, species=species)
     assert a1.current_stage == 0

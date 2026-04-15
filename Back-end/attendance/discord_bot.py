@@ -72,8 +72,10 @@ def _do_check_out(user):
         if record.status == "present":
             record.status = "leave"
 
-    record.check_out_at = timezone.now()
-    record.save()
+    if record.status == "leave":
+        record.save(update_fields=["status"])
+    from attendance.services import finalize_checkout
+    finalize_checkout(record, timezone.now())
     return "check_out", None
 
 
