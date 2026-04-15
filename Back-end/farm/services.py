@@ -1,12 +1,24 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import List, Dict, Any
+import random as _random
 from django.db import transaction
 from django.utils import timezone
 from farm import constants as C
-from farm.models import UserFarm
+from farm import profanity
+from farm.models import UserFarm, UserAnimal, Species, DailyInteraction
 from attendance.models import AttendanceRecord
 from farm.audit_log import log_negative_coin_clamp
+
+
+class EggError(Exception):
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+class NicknameError(ValueError):
+    pass
 
 
 @dataclass
@@ -136,3 +148,128 @@ def revoke_attendance_reward(record) -> None:
 
     _rebuild_farm_resources(farm)
     farm.save()
+
+
+def validate_nickname(text: str) -> str:
+    if text is None or not text.strip():
+        raise NicknameError("EMPTY")
+    if not (C.NICKNAME_MIN_LEN <= len(text) <= C.NICKNAME_MAX_LEN):
+        raise NicknameError("LENGTH")
+    if profanity.contains_banned(text):
+        raise NicknameError("PROFANITY")
+    return text
+
+
+def _weighted_choice(probs: dict, rng) -> str:
+    r = rng.random()
+    acc = 0.0
+    for key, p in probs.items():
+        acc += p
+        if r < acc:
+            return key
+    return list(probs.keys())[-1]
+
+
+@transaction.atomic
+def draw_egg(farm: UserFarm, egg_type: str, *, rng=None) -> UserAnimal:
+    if egg_type != "normal":
+        raise EggError("UNKNOWN_EGG")
+    rng = rng or _random.SystemRandom()
+    farm = UserFarm.objects.select_for_update().get(pk=farm.pk)
+    if farm.coins < C.EGG_NORMAL_PRICE:
+        raise EggError("INSUFFICIENT_COINS")
+
+    farm.coins -= C.EGG_NORMAL_PRICE
+
+    if farm.pity_normal + 1 >= C.EGG_NORMAL_PITY_THRESHOLD:
+        sr_or_above = {k: v for k, v in C.EGG_NORMAL_PROBS.items() if k in ("SR", "SSR")}
+        s = sum(sr_or_above.values())
+        normalized = {k: v / s for k, v in sr_or_above.items()}
+        rarity = _weighted_choice(normalized, rng)
+        farm.pity_normal = 0
+    else:
+        rarity = _weighted_choice(C.EGG_NORMAL_PROBS, rng)
+        if rarity in ("N", "R"):
+            farm.pity_normal += 1
+        else:
+            farm.pity_normal = 0
+
+    candidates = list(Species.objects.filter(rarity=rarity))
+    if not candidates:
+        candidates = list(Species.objects.filter(rarity="N"))
+    species = rng.choice(candidates)
+    farm.save()
+
+    return UserAnimal.objects.create(farm=farm, species=species)
+
+
+def _today_interaction(farm: UserFarm) -> DailyInteraction:
+    di, _ = DailyInteraction.objects.select_for_update().get_or_create(
+        farm=farm, date=timezone.localdate()
+    )
+    return di
+
+
+def _evolve_if_ready(animal: UserAnimal) -> int | None:
+    """현재 stage의 exp_to_next에 도달했으면 다음 stage로. 변경된 새 stage 반환."""
+    stages = animal.species.stages
+    cur = stages[animal.current_stage]
+    threshold = cur.get("exp_to_next")
+    if threshold is None:
+        return None
+    if animal.exp >= threshold and animal.current_stage + 1 < len(stages):
+        animal.current_stage += 1
+        return animal.current_stage
+    return None
+
+
+@transaction.atomic
+def feed_animal(farm: UserFarm, animal: UserAnimal) -> RewardResult:
+    farm = UserFarm.objects.select_for_update().get(pk=farm.pk)
+    if animal.farm_id != farm.id:
+        raise EggError("NOT_OWNER")
+    if farm.coins < C.FEED_COIN_COST:
+        raise EggError("INSUFFICIENT_COINS")
+    di = _today_interaction(farm)
+    if di.feed_count >= C.DAILY_FEED_LIMIT:
+        raise EggError("DAILY_LIMIT_FEED")
+
+    farm.coins -= C.FEED_COIN_COST
+    animal.exp += C.FEED_EXP_GAIN
+    evolved_to = _evolve_if_ready(animal)
+    di.feed_count += 1
+
+    farm.save()
+    animal.save()
+    di.save()
+
+    events = [{"type": "exp_gained", "amount": C.FEED_EXP_GAIN}]
+    if evolved_to is not None:
+        events.append({
+            "type": "evolved",
+            "animal_id": animal.id,
+            "from_stage": evolved_to - 1,
+            "to_stage": evolved_to,
+        })
+    return RewardResult(events=events)
+
+
+@transaction.atomic
+def pet_animal(farm: UserFarm, animal: UserAnimal) -> RewardResult:
+    farm = UserFarm.objects.select_for_update().get(pk=farm.pk)
+    if animal.farm_id != farm.id:
+        raise EggError("NOT_OWNER")
+    di = _today_interaction(farm)
+    if di.pet_count >= C.DAILY_PET_LIMIT:
+        raise EggError("DAILY_LIMIT_PET")
+    animal.affection += C.PET_AFFECTION_GAIN
+    di.pet_count += 1
+    animal.save()
+    di.save()
+    return RewardResult(events=[{"type": "affection_gained", "amount": C.PET_AFFECTION_GAIN}])
+
+
+def set_nickname(animal: UserAnimal, nickname: str) -> None:
+    cleaned = validate_nickname(nickname)
+    animal.nickname = cleaned
+    animal.save(update_fields=["nickname"])
