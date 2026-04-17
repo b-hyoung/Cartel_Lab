@@ -957,12 +957,24 @@ class AttendanceBot(commands.Bot):
                 f"{author.mention} 강퇴 실패: `{type(e).__name__}: {e}`"
             )
 
-    # ── 스케줄러: A반 기본 ──
+    # ── 스케줄러: A반 기본 (tasks.loop(hours=24) + 절대 시각 대기) ──
 
-    @tasks.loop(time=dtime(hour=10, minute=0, second=0, tzinfo=KST))
+    @staticmethod
+    async def _sleep_until_kst(hour, minute):
+        """KST 기준 다음 hour:minute 까지 절대 시각으로 대기."""
+        now = timezone.localtime()
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        delta = (target - now).total_seconds()
+        logger.info("sleeping %.0fs until %02d:%02d KST", delta, hour, minute)
+        await asyncio.sleep(delta)
+
+    @tasks.loop(hours=24)
     async def check_in_reminder(self):
-        """10:00 전체 출결 알림"""
+        """10:00 KST 전체 출결 알림"""
         try:
+            logger.info("check_in_reminder fired at %s", timezone.localtime().isoformat())
             if await sync_to_async(_should_skip_alarm)():
                 return
             channel = self.get_channel(self.attendance_channel_id)
@@ -971,20 +983,22 @@ class AttendanceBot(commands.Bot):
         except Exception:
             logger.exception("check_in_reminder failed")
 
-    @tasks.loop(time=dtime(hour=10, minute=30, second=0, tzinfo=KST))
+    @tasks.loop(hours=24)
     async def check_in_nag(self):
-        """10:30 미출결자 리마인드"""
+        """10:30 KST 미출결자 리마인드"""
         try:
+            logger.info("check_in_nag fired at %s", timezone.localtime().isoformat())
             if await sync_to_async(_should_skip_alarm)():
                 return
             await self._send_nag_reminder()
         except Exception:
             logger.exception("check_in_nag failed")
 
-    @tasks.loop(time=dtime(hour=20, minute=0, second=0, tzinfo=KST))
+    @tasks.loop(hours=24)
     async def check_out_reminder(self):
-        """20:00 전체 퇴실 알림"""
+        """20:00 KST 전체 퇴실 알림"""
         try:
+            logger.info("check_out_reminder fired at %s", timezone.localtime().isoformat())
             if await sync_to_async(_should_skip_alarm)():
                 return
             channel = self.get_channel(self.attendance_channel_id)
@@ -1114,19 +1128,22 @@ class AttendanceBot(commands.Bot):
         except Exception:
             logger.exception("_send_nag_reminder failed (class_group=%s)", class_group)
 
-    # ── loop before_loop: 봇 준비 대기 ──
+    # ── loop before_loop: 봇 준비 + 절대 시각 대기 ──
 
     @check_in_reminder.before_loop
     async def before_check_in_reminder(self):
         await self.wait_until_ready()
+        await self._sleep_until_kst(10, 0)
 
     @check_in_nag.before_loop
     async def before_check_in_nag(self):
         await self.wait_until_ready()
+        await self._sleep_until_kst(10, 30)
 
     @check_out_reminder.before_loop
     async def before_check_out_reminder(self):
         await self.wait_until_ready()
+        await self._sleep_until_kst(20, 0)
 
     @b_class_thursday_reminder.before_loop
     async def before_b_class_thursday_reminder(self):
