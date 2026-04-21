@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Animal, FarmEvent } from "./types";
-import { spriteFor, RARITY_STARS, RARITY_COLOR } from "./_sprites";
+import { spriteFor, spriteUrlFor, RARITY_STARS, RARITY_COLOR } from "./_sprites";
 
 interface Props {
   open: boolean;
@@ -107,7 +107,11 @@ export function EggDialog({ open, coins, onClose, onDraw, onRename }: Props) {
 
         {phase === "revealed" && result && (
           <div className="flex flex-col items-center gap-4">
-            <div className="text-8xl" aria-hidden>{spriteFor(result.species.code, 0)}</div>
+            {spriteUrlFor(result.species.code, 0) ? (
+              <img src={spriteUrlFor(result.species.code, 0)!} alt={result.species.name} width={96} height={96} style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }} />
+            ) : (
+              <div className="text-8xl" aria-hidden>{spriteFor(result.species.code, 0)}</div>
+            )}
             <div className="text-center">
               <div className="text-xs text-[#868b94] mb-1" style={{ color: RARITY_COLOR[result.species.rarity] }}>
                 {RARITY_STARS[result.species.rarity]} {result.species.rarity}
