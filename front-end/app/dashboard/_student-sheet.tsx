@@ -457,6 +457,13 @@ function MonthlyCalendarSection({
   const weeklyGoals = data?.weekly_goals ?? [];
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
 
+  // 데이터 로드 시 첫 번째 주간목표 자동 펼침
+  useEffect(() => {
+    if (weeklyGoals.length > 0 && expandedWeek === null) {
+      setExpandedWeek(weeklyGoals[0].week_start);
+    }
+  }, [weeklyGoals]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = new Date(year, month, 0);
   const startDow = firstDay.getDay();
@@ -476,6 +483,7 @@ function MonthlyCalendarSection({
     if (m > 12) { m = 1; y += 1; }
     setMonth(m);
     setYear(y);
+    setExpandedWeek(null);
   }
 
   const monthOptions: { label: string; year: number; month: number }[] = [];
@@ -544,6 +552,7 @@ function MonthlyCalendarSection({
                 const [y, m] = e.target.value.split("-").map(Number);
                 setYear(y);
                 setMonth(m);
+                setExpandedWeek(null);
               }}
               style={{ ...fieldStyle, padding: "6px 10px", fontSize: 13, fontWeight: 700, textAlign: "center", minWidth: 130 }}
             >
