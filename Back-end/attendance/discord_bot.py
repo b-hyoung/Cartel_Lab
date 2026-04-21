@@ -327,18 +327,11 @@ def _do_check_out(user):
             record.status = "leave"
             is_early_leave = True
 
-    record.check_out_at = timezone.now()
-    record.save()
-
-    head_parts = ["퇴실됐어요!"]
-    if is_early_leave:
-        head_parts.append("(조퇴 처리)")
-    if today.weekday() == 4:
-        head_parts.append("🎉 좋은 주말 보내세요!")
-    if now.hour >= 22:
-        head_parts.append("🌙 오늘도 고생하셨어요")
-
-    return "check_out", None, " ".join(head_parts)
+    if record.status == "leave":
+        record.save(update_fields=["status"])
+    from attendance.services import finalize_checkout
+    finalize_checkout(record, timezone.now())
+    return "check_out", None
 
 
 @_with_db_retry

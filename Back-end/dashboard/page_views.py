@@ -110,13 +110,22 @@ def dashboard_edit_attendance(request):
             record.check_in_at = timezone.make_aware(dt.combine(att_date, check_in), tz)
         except Exception:
             return JsonResponse({"error": "입실 시간 형식 오류 (HH:MM)"}, status=400)
+    new_check_out = None
     if check_out_str:
         try:
             check_out = dt.strptime(check_out_str, "%H:%M").time()
-            record.check_out_at = timezone.make_aware(dt.combine(att_date, check_out), tz)
+            new_check_out = timezone.make_aware(dt.combine(att_date, check_out), tz)
         except Exception:
             return JsonResponse({"error": "퇴실 시간 형식 오류 (HH:MM)"}, status=400)
     record.save()
+    if new_check_out is not None:
+        from attendance.services import finalize_checkout
+        from farm.services import revoke_attendance_reward
+        if record.reward_granted:
+            revoke_attendance_reward(record)
+            record.refresh_from_db()
+        finalize_checkout(record, new_check_out)
+        record.refresh_from_db()
 
     return JsonResponse({
         "status": "ok",
