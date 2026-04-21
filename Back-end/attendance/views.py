@@ -353,8 +353,8 @@ def check_out(request):
             if record.status == "present":
                 record.status = "leave"
 
-        record.check_out_at = timezone.now()
-        record.save()
+        from attendance.services import finalize_checkout
+        finalize_checkout(record, timezone.now())
 
         if record.status == "leave" and time_setting:
             msg = f"조퇴 처리되었습니다. (기준: {time_setting.check_out_minimum.strftime('%H:%M')})"
@@ -628,8 +628,12 @@ def approve_checkout_request(request, request_id):
         if time_setting and req.requested_time < time_setting.check_out_minimum:
             if record.status == "present":
                 record.status = "leave"
-        record.check_out_at = checkout_aware
-        record.save()
+        from attendance.services import finalize_checkout
+        if record.status != "leave" and time_setting and req.requested_time < time_setting.check_out_minimum and record.status == "present":
+            record.save(update_fields=["status"])
+        elif record.status == "leave":
+            record.save(update_fields=["status"])
+        finalize_checkout(record, checkout_aware)
 
     req.status = 'approved'
     req.approved_by = user

@@ -21,6 +21,7 @@ class AttendanceRecord(models.Model):
     check_in_at = models.DateTimeField(auto_now_add=True)
     check_out_at = models.DateTimeField(null=True, blank=True)
     note = models.CharField(max_length=255, null=True, blank=True)
+    reward_granted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
