@@ -437,12 +437,6 @@ function MonthlyCalendarSection({
     if (!open) return;
     if (dataCache.has(monthKey)) return;
 
-    const fromRows = extractFromRows(monthKey);
-    if (fromRows) {
-      setDataCache((prev) => new Map(prev).set(monthKey, fromRows));
-      return;
-    }
-
     setLoading(true);
     authFetch(`${Routes.ADMIN}/api/student/${studentId}/monthly-attendance/?month=${monthKey}`)
       .then((resp: { records: MonthlyRecord[]; summary: MonthlySummary; daily_goals?: Record<string, DailyGoalEntry>; weekly_goals?: WeeklyGoalGroup[] }) => {
