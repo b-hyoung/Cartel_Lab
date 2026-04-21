@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Animal } from "./types";
-import { spriteFor, RARITY_STARS, RARITY_COLOR } from "./_sprites";
+import { spriteFor, spriteUrlFor, RARITY_STARS, RARITY_COLOR } from "./_sprites";
 
 interface Props {
   animal: Animal | null;
@@ -21,7 +21,8 @@ export function SideSheet({ animal, petRemaining, feedRemaining, onClose, onPet,
 
   if (!animal) return null;
 
-  const sprite = spriteFor(animal.species.code, animal.current_stage);
+  const svgUrl = spriteUrlFor(animal.species.code, animal.current_stage);
+  const emoji = spriteFor(animal.species.code, animal.current_stage);
   const stage = animal.species.stages[animal.current_stage];
   const expToNext = stage?.exp_to_next ?? null;
 
@@ -70,7 +71,11 @@ export function SideSheet({ animal, petRemaining, feedRemaining, onClose, onPet,
         </header>
 
         <div className="px-6 py-6 flex flex-col items-center gap-4 border-b border-[#f0f2f4]">
-          <div className="text-7xl" aria-hidden>{sprite}</div>
+          {svgUrl ? (
+            <img src={svgUrl} alt={animal.nickname ?? animal.species.name} width={96} height={96} style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }} />
+          ) : (
+            <div className="text-7xl" aria-hidden>{emoji}</div>
+          )}
           <div className="flex items-center gap-2">
             {editingName ? (
               <>

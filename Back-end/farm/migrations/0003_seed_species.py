@@ -20,10 +20,10 @@ def forwards(apps, schema_editor):
                 "rarity": rarity,
                 "description": desc,
                 "stages": [
-                    {"name": f"{name} 1단계", "sprite_url": f"/sprites/{prefix}_1.png", "exp_to_next": 50},
-                    {"name": f"{name} 2단계", "sprite_url": f"/sprites/{prefix}_2.png", "exp_to_next": 200},
-                    {"name": f"{name} 3단계", "sprite_url": f"/sprites/{prefix}_3.png", "exp_to_next": 600},
-                    {"name": f"{name} 4단계", "sprite_url": f"/sprites/{prefix}_4.png", "exp_to_next": None},
+                    {"name": f"{name} 1단계", "sprite_url": f"/sprites/{prefix}_1.svg", "exp_to_next": 50},
+                    {"name": f"{name} 2단계", "sprite_url": f"/sprites/{prefix}_2.svg", "exp_to_next": 200},
+                    {"name": f"{name} 3단계", "sprite_url": f"/sprites/{prefix}_3.svg", "exp_to_next": 600},
+                    {"name": f"{name} 4단계", "sprite_url": f"/sprites/{prefix}_4.svg", "exp_to_next": None},
                 ],
             },
         )

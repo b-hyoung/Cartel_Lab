@@ -2,17 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Animal } from "./types";
-import { spriteFor } from "./_sprites";
+import { spriteUrlFor, spriteFor } from "./_sprites";
 
 interface Props {
   animal: Animal;
   onClick: (animal: Animal, x: number, y: number) => void;
 }
 
-/**
- * 농장 내 개별 동물. 자체 좌표(x,y) 보유, 2~5초마다 새 목표로 이동.
- * 탭 비활성화 시 자동 일시정지.
- */
 export function AnimalSprite({ animal, onClick }: Props) {
   const [pos, setPos] = useState(() => ({
     x: 10 + Math.random() * 80,
@@ -52,7 +48,10 @@ export function AnimalSprite({ animal, onClick }: Props) {
     onClick(animal, r ? r.left + r.width / 2 : 0, r ? r.top : 0);
   };
 
-  const sprite = spriteFor(animal.species.code, animal.current_stage);
+  const svgUrl = spriteUrlFor(animal.species.code, animal.current_stage);
+  const emoji = spriteFor(animal.species.code, animal.current_stage);
+
+  const size = 48 + animal.current_stage * 12;
 
   return (
     <button
@@ -60,17 +59,26 @@ export function AnimalSprite({ animal, onClick }: Props) {
       type="button"
       onClick={handleClick}
       aria-label={animal.nickname ?? animal.species.name}
-      className="absolute select-none cursor-pointer text-5xl md:text-6xl"
+      className="absolute select-none cursor-pointer"
       style={{
         left: `${pos.x}%`,
         top: `${pos.y}%`,
         transform: `translate(-50%, -50%) ${popping ? "scale(1.18)" : "scale(1)"}`,
         transition: "left 3s cubic-bezier(0.22, 1, 0.36, 1), top 3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.35s ease-out",
         willChange: "transform, left, top",
-        textShadow: "0 1px 0 rgba(0,0,0,0.05)",
       }}
     >
-      <span aria-hidden>{sprite}</span>
+      {svgUrl ? (
+        <img
+          src={svgUrl}
+          alt={animal.nickname ?? animal.species.name}
+          width={size}
+          height={size}
+          style={{ imageRendering: "auto", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.15))" }}
+        />
+      ) : (
+        <span className="text-5xl md:text-6xl" aria-hidden>{emoji}</span>
+      )}
     </button>
   );
 }
