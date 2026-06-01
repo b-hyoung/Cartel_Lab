@@ -5,12 +5,16 @@ from .views import (
     add_daily_todo,
     add_goal,
     add_lab_goal,
+    api_calendar,
     api_daily_goal,
     api_daily_goal_achieve,
+    api_daily_goal_delete,
     api_daily_todo_delete,
     api_daily_todo_toggle,
     api_daily_todo_update,
     api_daily_todos,
+    api_goals_for_date,
+    api_google_calendar_status,
     api_lab_goals,
     api_weekly_achievement,
     daily_goal_achieve,
@@ -25,7 +29,6 @@ from .views import (
     google_calendar_connect,
     google_calendar_disconnect,
     google_calendar_import,
-    index,
     set_daily_todos_checked,
     toggle_daily_todo,
     toggle_goal,
@@ -33,7 +36,6 @@ from .views import (
 )
 
 urlpatterns = [
-    path("", index, name="planner-index"),
     path("lab-goals/add/", add_lab_goal, name="planner-lab-goal-add"),
     path("lab-goals/<int:goal_id>/delete/", delete_lab_goal, name="planner-lab-goal-delete"),
     path("google/connect/", google_calendar_connect, name="planner-google-calendar-connect"),
@@ -53,6 +55,7 @@ urlpatterns = [
     path("goals/<int:goal_id>/update/", update_goal, name="planner-goal-update"),
     path("api/daily-goal/", api_daily_goal, name="planner-api-daily-goal"),
     path("api/daily-goal/achieve/", api_daily_goal_achieve, name="planner-api-daily-goal-achieve"),
+    path("api/daily-goal/delete/", api_daily_goal_delete, name="planner-api-daily-goal-delete"),
     path("api/weekly-achievement/", api_weekly_achievement, name="planner-api-weekly-achievement"),
     path("daily-goal/save/", daily_goal_save, name="planner-daily-goal-save"),
     path("daily-goal/<int:goal_id>/achieve/", daily_goal_achieve, name="planner-daily-goal-achieve"),
@@ -62,4 +65,7 @@ urlpatterns = [
     path("api/daily-todos/<int:todo_id>/update/", api_daily_todo_update, name="planner-api-daily-todo-update"),
     path("api/daily-todos/<int:todo_id>/delete/", api_daily_todo_delete, name="planner-api-daily-todo-delete"),
     path("api/lab-goals/", api_lab_goals, name="planner-api-lab-goals"),
+    path("api/calendar/", api_calendar, name="planner-api-calendar"),
+    path("api/goals/", api_goals_for_date, name="planner-api-goals"),
+    path("api/google-calendar/status/", api_google_calendar_status, name="planner-api-google-calendar-status"),
 ]

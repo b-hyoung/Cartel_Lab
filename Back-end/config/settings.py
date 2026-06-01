@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -25,6 +26,8 @@ load_dotenv(BASE_DIR / ".env")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-only-change-this-secret-key')
+
+WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET', '')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
@@ -57,6 +60,7 @@ INSTALLED_APPS = [
     'jobs',
     'blog',
     'contests',
+    'farm',
     'rest_framework',
 ]
 
@@ -107,7 +111,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -126,22 +130,36 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-_mysql_url = os.getenv('MYSQL_URL') or os.getenv('DATABASE_URL', '')
-if _mysql_url:
+_db_url = os.getenv('DATABASE_URL', '') or os.getenv('MYSQL_URL', '')
+if _db_url:
     import urllib.parse as _urlparse
-    _u = _urlparse.urlparse(_mysql_url)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': _u.path.lstrip('/'),
-            'USER': _u.username,
-            'PASSWORD': _u.password,
-            'HOST': _u.hostname,
-            'PORT': str(_u.port or 3306),
-            'OPTIONS': {'charset': 'utf8mb4'},
-            'CONN_MAX_AGE': 60,
+    _u = _urlparse.urlparse(_db_url)
+    if _u.scheme in ('postgresql', 'postgres'):
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': _u.path.lstrip('/'),
+                'USER': _u.username,
+                'PASSWORD': _u.password,
+                'HOST': _u.hostname,
+                'PORT': str(_u.port or 5432),
+                'OPTIONS': {'sslmode': 'require'},
+                'CONN_MAX_AGE': 60,
+            }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': _u.path.lstrip('/'),
+                'USER': _u.username,
+                'PASSWORD': _u.password,
+                'HOST': _u.hostname,
+                'PORT': str(_u.port or 3306),
+                'OPTIONS': {'charset': 'utf8mb4'},
+                'CONN_MAX_AGE': 60,
+            }
+        }
 else:
     DATABASES = {
         'default': {
@@ -276,3 +294,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30일
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Discord Bot
+DISCORD_BOT_TOKEN = os.environ.get('DISCORD_BOT_TOKEN', '')
+DISCORD_CHANNEL_ID = os.environ.get('DISCORD_CHANNEL_ID', '')

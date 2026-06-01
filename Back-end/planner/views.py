@@ -6,7 +6,7 @@ from datetime import date, datetime, time, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -504,157 +504,8 @@ def _sync_google_events_for_range(user, start_date, end_date):
 
 
 def index(request):
-    planner_view = request.GET.get("view", "goal")
-    if planner_view not in {"goal", "plan"}:
-        planner_view = "goal"
-
-    today = timezone.localdate()
-    month_raw = request.GET.get("month")
-    try:
-        current_month = date.fromisoformat(f"{month_raw}-01") if month_raw else today.replace(day=1)
-    except ValueError:
-        current_month = today.replace(day=1)
-
-    selected_date_raw = request.GET.get("date")
-    try:
-        selected_date = date.fromisoformat(selected_date_raw) if selected_date_raw else today
-    except ValueError:
-        selected_date = today
-
-    if selected_date.month != current_month.month or selected_date.year != current_month.year:
-        selected_date = current_month
-
-    first_weekday, _ = calendar.monthrange(current_month.year, current_month.month)
-    # monthrange: Monday=0 ... Sunday=6
-    leading_days = (first_weekday + 1) % 7
-    calendar_start = current_month - timedelta(days=leading_days)
-    calendar_end = calendar_start + timedelta(days=41)
-
-    if request.user.is_authenticated:
-        # Legacy registered todos should not remain in the todo list.
-        DailyTodo.objects.filter(user=request.user, is_completed=True).delete()
-        goals = WeeklyGoal.objects.filter(
-            user=request.user,
-            week_start__gte=calendar_start - timedelta(days=6),
-            week_start__lte=calendar_end,
-        ).order_by("week_start", "weekday", "created_at")
-    else:
-        goals = WeeklyGoal.objects.none()
-
-    goals_by_date = {}
-    for goal in goals:
-        goal.display_content = _normalize_certification_goal_text(goal.content)
-        goal_date = _goal_date(goal)
-        if calendar_start <= goal_date <= calendar_end:
-            goals_by_date.setdefault(goal_date, []).append(goal)
-
-    weeks = []
-    cursor = calendar_start
-    for _ in range(6):
-        week_days = []
-        for _ in range(7):
-            day_goals = goals_by_date.get(cursor, [])
-            preview_goals = []
-            previous_day_goals = goals_by_date.get(cursor - timedelta(days=1), [])
-            next_day_goals = goals_by_date.get(cursor + timedelta(days=1), [])
-            for goal in day_goals[:2]:
-                same_prev = any(
-                    prev_goal.content == goal.content and prev_goal.planned_time == goal.planned_time
-                    for prev_goal in previous_day_goals
-                )
-                same_next = any(
-                    next_goal.content == goal.content and next_goal.planned_time == goal.planned_time
-                    for next_goal in next_day_goals
-                )
-                preview_goals.append(
-                    {
-                        "goal": goal,
-                        "continued_prev": same_prev,
-                        "continued_next": same_next,
-                    }
-                )
-            week_days.append(
-                {
-                    "date": cursor,
-                    "is_current_month": cursor.month == current_month.month,
-                    "is_selected": cursor == selected_date,
-                    "is_today": cursor == today,
-                    "preview_goals": preview_goals,
-                    "more_count": max(len(day_goals) - 2, 0),
-                }
-            )
-            cursor += timedelta(days=1)
-        weeks.append(week_days)
-
-    selected_goals = goals_by_date.get(selected_date, [])
-    prev_month = (current_month.replace(day=1) - timedelta(days=1)).replace(day=1)
-    next_month = (current_month.replace(day=28) + timedelta(days=4)).replace(day=1)
-    daily_todos = (
-        DailyTodo.objects.filter(user=request.user, target_date=selected_date, is_completed=False)
-        if request.user.is_authenticated
-        else DailyTodo.objects.none()
-    )
-    daily_goal = (
-        DailyGoal.objects.filter(user=request.user, date=selected_date).first()
-        if request.user.is_authenticated
-        else None
-    )
-    current_lab_week_start = _monday_week_start(today)
-    current_lab_week_end = current_lab_week_start + timedelta(days=6)
-    current_lab_week_goals = list(
-        LabWideGoal.objects.select_related("created_by").filter(week_start=current_lab_week_start)
-    )
-    previous_lab_weeks = []
-    for offset in range(1, 5):
-        week_start = current_lab_week_start - timedelta(days=7 * offset)
-        goals_in_week = list(
-            LabWideGoal.objects.select_related("created_by").filter(week_start=week_start)
-        )
-        if goals_in_week:
-            previous_lab_weeks.append(
-                {
-                    "week_start": week_start,
-                    "week_end": week_start + timedelta(days=6),
-                    "goals": goals_in_week,
-                }
-            )
-
-    context = {
-        "planner_view": planner_view,
-        "current_month": current_month,
-        "selected_date": selected_date,
-        "prev_month": prev_month,
-        "next_month": next_month,
-        "weeks": weeks,
-        "selected_goals": selected_goals,
-        "current_lab_week_start": current_lab_week_start,
-        "current_lab_week_end": current_lab_week_end,
-        "current_lab_week_goals": current_lab_week_goals,
-        "previous_lab_weeks": previous_lab_weeks,
-        "daily_todos": daily_todos,
-        "daily_todos_checked_count": daily_todos.filter(is_checked=True).count()
-        if request.user.is_authenticated
-        else 0,
-        "daily_todos_total_count": daily_todos.count() if request.user.is_authenticated else 0,
-        "daily_goal": daily_goal,
-        "daily_todos_all_checked": (
-            request.user.is_authenticated
-            and daily_todos.exists()
-            and not daily_todos.filter(is_checked=False).exists()
-        ),
-        "google_calendar_enabled": is_configured(),
-        "google_calendar_connected": (
-            request.user.is_authenticated
-            and hasattr(request.user, "google_calendar_credential")
-        ),
-        "google_calendar_email": (
-            request.user.google_calendar_credential.google_email
-            if request.user.is_authenticated
-            and hasattr(request.user, "google_calendar_credential")
-            else ""
-        ),
-    }
-    return render(request, "planner/index.html", context)
+    """플래너 UI는 Next.js에서 처리. 레거시 redirect 대상용 stub."""
+    return JsonResponse({"ok": True})
 
 
 @login_required
@@ -886,16 +737,6 @@ def add_lab_goal(request):
             week_start=_monday_week_start(timezone.localdate()),
             content=content,
         )
-    return redirect(f"{reverse('planner-index')}?view=goal")
-
-
-@login_required
-def delete_lab_goal(request, goal_id):
-    if request.method != "POST":
-        return redirect("planner-index")
-
-    goal = get_object_or_404(LabWideGoal, id=goal_id, created_by=request.user)
-    goal.delete()
     return redirect(f"{reverse('planner-index')}?view=goal")
 
 
@@ -1242,15 +1083,24 @@ def daily_goal_achieve(request, goal_id):
 
 
 def _get_planner_user(request):
-    """세션 또는 Token 인증 모두 지원"""
+    """세션 또는 Bearer JWT 또는 Token 인증 모두 지원"""
     if request.user.is_authenticated:
         return request.user
     auth = request.META.get('HTTP_AUTHORIZATION', '')
-    if auth.startswith('Token '):
-        from rest_framework.authtoken.models import Token
+    if auth.startswith('Bearer '):
         try:
+            from rest_framework_simplejwt.tokens import AccessToken
+            from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+            from django.contrib.auth import get_user_model
+            token = AccessToken(auth.split(' ')[1])
+            return get_user_model().objects.get(id=token['user_id'])
+        except Exception:
+            pass
+    if auth.startswith('Token '):
+        try:
+            from rest_framework.authtoken.models import Token
             return Token.objects.select_related('user').get(key=auth.split(' ')[1]).user
-        except Token.DoesNotExist:
+        except Exception:
             pass
     return None
 
@@ -1299,6 +1149,18 @@ def api_daily_goal(request):
         "is_achieved": goal.is_achieved,
         "created": created,
     })
+
+
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def api_daily_goal_delete(request):
+    """오늘 하루 목표 삭제 (앱용)"""
+    user = _get_planner_user(request)
+    if not user:
+        return JsonResponse({"error": "인증이 필요합니다."}, status=401)
+    today = timezone.localdate()
+    DailyGoal.objects.filter(user=user, date=today).delete()
+    return JsonResponse({"ok": True})
 
 
 @csrf_exempt
@@ -1442,8 +1304,102 @@ def api_daily_todo_delete(request, todo_id):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def api_calendar(request):
+    """월별 날짜별 계획(WeeklyGoal) 목록 조회"""
+    user = _get_planner_user(request)
+    if not user:
+        return JsonResponse({"error": "인증이 필요합니다."}, status=401)
+
+    month_raw = request.GET.get('month', '')
+    try:
+        year, month_num = map(int, month_raw.split('-'))
+        first_day = date(year, month_num, 1)
+    except Exception:
+        today = timezone.localdate()
+        year, month_num = today.year, today.month
+        first_day = date(year, month_num, 1)
+
+    last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+
+    goals_qs = WeeklyGoal.objects.filter(user=user)
+    goals_by_date = {}
+    for goal in goals_qs:
+        goal_date = _goal_date(goal)
+        if first_day <= goal_date <= last_day:
+            ymd = goal_date.isoformat()
+            goals_by_date.setdefault(ymd, []).append({
+                'id': goal.id,
+                'content': goal.content,
+                'color': goal.color,
+                'planned_time': goal.planned_time.strftime('%H:%M') if goal.planned_time else None,
+                'is_completed': goal.is_completed,
+            })
+
+    return JsonResponse({'month': f'{year}-{month_num:02d}', 'goals_by_date': goals_by_date})
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_goals_for_date(request):
+    """특정 날짜의 계획 목록 조회"""
+    user = _get_planner_user(request)
+    if not user:
+        return JsonResponse({"error": "인증이 필요합니다."}, status=401)
+
+    date_raw = request.GET.get('date', '')
+    try:
+        target_date = date.fromisoformat(date_raw)
+    except Exception:
+        target_date = timezone.localdate()
+
+    week_start = _week_start_from_input(target_date.isoformat())
+    weekday = (target_date - week_start).days
+
+    goals = WeeklyGoal.objects.filter(
+        user=user, week_start=week_start, weekday=weekday,
+    ).order_by('planned_time', 'created_at')
+
+    return JsonResponse({
+        'date': target_date.isoformat(),
+        'goals': [
+            {
+                'id': g.id,
+                'content': g.content,
+                'color': g.color,
+                'planned_time': g.planned_time.strftime('%H:%M') if g.planned_time else None,
+                'is_completed': g.is_completed,
+            }
+            for g in goals
+        ],
+    })
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_google_calendar_status(request):
+    """구글 캘린더 연결 상태 조회"""
+    user = _get_planner_user(request)
+    if not user:
+        return JsonResponse({"error": "인증이 필요합니다."}, status=401)
+
+    credential = getattr(user, 'google_calendar_credential', None)
+    connected = credential is not None
+    email = credential.google_email if credential else None
+
+    return JsonResponse({
+        'enabled': is_configured(),
+        'connected': connected,
+        'email': email,
+        'connect_url': reverse('planner-google-calendar-connect'),
+        'disconnect_url': reverse('planner-google-calendar-disconnect'),
+        'sync_url': reverse('planner-google-calendar-import'),
+    })
+
+
+@csrf_exempt
 def api_lab_goals(request):
-    """이번 주 랩실 전체목표 조회 (앱용)"""
+    """이번 주 + 이전 4주 랩실 전체목표 조회 (앱용)"""
     user = _get_planner_user(request)
     if not user:
         return JsonResponse({"error": "인증이 필요합니다."}, status=401)
@@ -1452,10 +1408,25 @@ def api_lab_goals(request):
     week_start = _monday_week_start(today)
 
     goals = LabWideGoal.objects.filter(week_start=week_start).select_related("created_by").order_by("created_at")
+
+    previous_weeks = []
+    for offset in range(1, 5):
+        ws = week_start - timedelta(days=7 * offset)
+        week_goals = list(
+            LabWideGoal.objects.filter(week_start=ws).select_related("created_by").order_by("created_at")
+        )
+        if week_goals:
+            previous_weeks.append({
+                "week_start": ws.isoformat(),
+                "week_end": (ws + timedelta(days=6)).isoformat(),
+                "goals": [{"id": g.id, "content": g.content, "created_by": g.created_by.name} for g in week_goals],
+            })
+
     return JsonResponse({
         "week_start": week_start.isoformat(),
         "goals": [
             {"id": g.id, "content": g.content, "created_by": g.created_by.name}
             for g in goals
         ],
+        "previous_weeks": previous_weeks,
     })
