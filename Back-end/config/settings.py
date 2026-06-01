@@ -130,22 +130,36 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-_mysql_url = os.getenv('MYSQL_URL') or os.getenv('DATABASE_URL', '')
-if _mysql_url:
+_db_url = os.getenv('DATABASE_URL', '') or os.getenv('MYSQL_URL', '')
+if _db_url:
     import urllib.parse as _urlparse
-    _u = _urlparse.urlparse(_mysql_url)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': _u.path.lstrip('/'),
-            'USER': _u.username,
-            'PASSWORD': _u.password,
-            'HOST': _u.hostname,
-            'PORT': str(_u.port or 3306),
-            'OPTIONS': {'charset': 'utf8mb4'},
-            'CONN_MAX_AGE': 60,
+    _u = _urlparse.urlparse(_db_url)
+    if _u.scheme in ('postgresql', 'postgres'):
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': _u.path.lstrip('/'),
+                'USER': _u.username,
+                'PASSWORD': _u.password,
+                'HOST': _u.hostname,
+                'PORT': str(_u.port or 5432),
+                'OPTIONS': {'sslmode': 'require'},
+                'CONN_MAX_AGE': 60,
+            }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': _u.path.lstrip('/'),
+                'USER': _u.username,
+                'PASSWORD': _u.password,
+                'HOST': _u.hostname,
+                'PORT': str(_u.port or 3306),
+                'OPTIONS': {'charset': 'utf8mb4'},
+                'CONN_MAX_AGE': 60,
+            }
+        }
 else:
     DATABASES = {
         'default': {
