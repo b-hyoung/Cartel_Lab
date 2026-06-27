@@ -1,8 +1,26 @@
-# Team Lab
+# Jvision Lab (Cartel_Lab)
 
-Django 기반 팀 프로젝트입니다.
+학과 1·2학년이 함께 쓰는 학습 관리 플랫폼입니다. 출결, 주간계획, 시험·자격증 D-day 같은 기본 기능에 더해, 2학년 멘토가 낸 코딩 문제를 1학년이 풀고 AI가 1차 채점하는 흐름이 GitHub과 붙어 돌아갑니다. 백엔드는 Django, 프론트는 Next.js로 분리했고 모바일(React Native)도 같이 둡니다.
 
-## 프로젝트 역할 분담 (3인)
+## 코딩 문제 자동화 (mentor-problems 연동)
+
+문제 출제부터 채점까지 사람이 반복으로 손대는 구간을 줄였습니다. 짝이 되는 저장소 [jvision-mentor-problems](https://github.com/b-hyoung/jvision-mentor-problems)와 GitHub Actions로 맞물립니다.
+
+1. 2학년 멘토가 mentor-problems에 문제 마크다운을 PR로 올립니다.
+2. 머지되면 Actions가 GPT로 채점 설정(힌트·엣지케이스)을 만들고, 이 플랫폼에 퀴즈로 자동 등록합니다.
+3. 1학년이 자기 브랜치에서 답안을 PR로 올리면, AI가 기본·심화 테스트를 돌려 통과 여부와 힌트를 코멘트로 답니다.
+4. 채점 결과가 Discord로 담당 멘토에게 갑니다. 멘토가 코드를 직접 보고 고칠 부분·개선점을 짚어준 뒤, 괜찮으면 main에 올립니다.
+
+AI는 1차 거름망입니다. 최종 판단은 멘토가 코드를 직접 보고 합니다. master 직접 푸시를 막고, 답안 머지는 허용된 멘토의 승인이 있어야만 통과하도록 Actions에서 한 번 더 검사합니다(`.github/workflows/allowed-reviewer-check.yml`). AI 코멘트가 통과를 줘도 멘토가 코드를 안 보면 main에 못 올라갑니다.
+
+## 프로젝트 역할 분담 (4인)
+
+### 박형석 (PM · 구조 설계 · 채용 추천)
+- Django 모놀리식을 Next.js 프론트로 분리하고, AI 코딩 도구가 작업하기 좋게 컴포넌트·타입·컨벤션 구조를 먼저 잡음
+- mentor-problems와 묶은 AI 채점·자동화 파이프라인 설계 (위 "코딩 문제 자동화" 참고)
+- 이력서·GitHub를 분석해 강·약점 피드백 (`users/ai_services.py`)
+- 채용 공고 수집 파이프라인: 사람인·원티드에서 정기 동기화, 소스별 최신 300건 유지 (`planner/services/job_sync.py`, 소스는 `.env`로 교체 가능)
+- 이력서·GitHub 기반 기업 추천 점수 집계 (`planner/services/recommendation.py`, gpt-4.1-mini)
 
 ### 유현기
 - 위치데이터 기반 출결
